@@ -1,1 +1,18 @@
 # SomaS3D
+
+SomaS3D is a mobile-first 3D modeling application.
+
+## Current foundation
+
+The first engineering milestone is the modeling core:
+
+- editable topology
+- per-corner UVs and UV islands
+- material/PBR data
+- procedural material-property semantics
+- validation
+- deterministic tests
+
+The modeling core is intentionally independent of Android and the viewport. Rendering, importers, character systems, physics, and ShofterUI will build on this foundation.
+
+See `docs/modeling-foundation.md` for the current architecture and completion criteria.

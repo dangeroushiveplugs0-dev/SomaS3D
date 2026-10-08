@@ -1,10 +1,12 @@
 //! Platform-independent geometry primitives for SomaS3D.
 
 mod material;
+mod material_eval;
 mod topology;
 mod uv;
 
 pub use material::{Material, MaterialSemantics, PbrMaterial};
+pub use material_eval::{evaluate, EvaluatedPbr};
 pub use topology::{CornerId, EdgeId, FaceId, Mesh, MeshError, VertexId};
 pub use uv::{Uv, UvCorner, UvError, UvIsland, UvLayer};
 

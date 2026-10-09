@@ -4,35 +4,30 @@ SomaS3D is being built as a modeling application first.
 
 ## Order of work
 
-1. Editable topology
-2. UV representation and editing algorithms
+1. Editable topology and adjacency
+2. UV representation, seams, island detection, and editing algorithms
 3. Selection
-4. Modeling operations
+4. Fundamental modeling operations
 5. Undo/redo
 6. Viewport rendering
 7. UV editor
 8. Texturing and material authoring
 9. Performance and stress testing
 
-Other systems are deliberately downstream of this foundation.
+The PBR material data model and semantic material evaluator are already part of the initial foundation. Rich texture image management and authoring tools remain downstream of stable topology and UV behavior.
 
-## UV rule
+## Topology and UV rules
 
-UV coordinates are stored per face corner, not per shared vertex. A 3D vertex may therefore have different UV coordinates on different faces at a seam.
-
-This representation supports:
-
-- true UV seams
-- separate islands
-- mirrored/stacked UVs
-- hard texture boundaries
-- correct import/export of production meshes
-
-The runtime renderer may flatten indexed topology into GPU vertices when UV or attribute discontinuities require it.
+- UV coordinates are stored per face corner, not per shared vertex. A 3D vertex may have different UV coordinates on different faces at a seam.
+- Edges track incident faces and an explicit seam flag.
+- UV islands are connected components across manifold edges only when the edge is not marked as a seam and both endpoint UVs agree within a small tolerance.
+- Non-manifold edges are conservatively treated as UV island boundaries.
+- UV coordinates may lie outside the 0–1 square, supporting tiled and UDIM-style layouts.
+- The runtime renderer may flatten indexed topology into GPU vertices when UV or attribute discontinuities require it.
 
 ## Texturing and PBR
 
-The material system will support the familiar physically based channels:
+The material system supports familiar physically based channels:
 
 - base color
 - metallic
@@ -44,28 +39,10 @@ The material system will support the familiar physically based channels:
 
 Additional optional maps can be added without changing the core material identity.
 
-SomaS3D will also have a semantic material layer for properties such as:
-
-- wetness
-- dryness
-- organicness
-
-These are **not** replacement PBR channels. They are higher-level controls that modify standard PBR inputs in a physically interpretable way.
-
-For example, wetness can reduce effective roughness, increase specular response, and optionally darken a material's diffuse response. Dryness can push a surface toward higher roughness. Organicness is intentionally a semantic control rather than a claim that a universal physical "organic" value exists; it can drive a selected material recipe such as subsurface response, roughness variation, and micro-normal detail.
-
-The renderer will eventually evaluate these semantic controls into ordinary PBR values. The authoring model remains explicit so materials can be serialized, inspected, and reproduced.
+SomaS3D also has a semantic material layer for properties such as wetness, dryness, and organicness. These are higher-level controls, not replacement PBR channels. The evaluator currently maps wetness and dryness into bounded roughness changes; organicness remains an authoring semantic until a well-defined material recipe uses it.
 
 ## Completion gate
 
-The modeling foundation is not considered complete because basic tools exist. It must survive stress tests involving:
-
-- large meshes
-- many UV islands
-- heavy seam counts
-- non-manifold topology
-- duplicated/stacked UVs
-- invalid UV values
-- repeated edit operations
+The modeling foundation is not considered complete because basic tools exist. It must survive stress tests involving large meshes, many UV islands, heavy seam counts, non-manifold topology, duplicated/stacked UVs, invalid UV values, and repeated edit operations.
 
 Only after the core passes these tests should character, physics, FEM, or advanced importer work become the primary focus.

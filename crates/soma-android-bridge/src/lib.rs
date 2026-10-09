@@ -69,17 +69,17 @@ pub extern "system" fn Java_com_soma3d_app_NativeGeometry_sceneJson(mut env: JNI
 }
 
 #[no_mangle]
-pub extern "system" fn Java_com_soma3d_app_NativeGeometry_addCube(_env: JNIEnv, _class: JClass) -> jlong {
+pub extern "system" fn Java_com_soma3d_app_NativeGeometry_nativeAddCube(_env: JNIEnv, _class: JClass) -> jlong {
     add_primitive(PrimitiveKind::Cube { size: 2.0 }, "Cube").unwrap_or(-1) as jlong
 }
 
 #[no_mangle]
-pub extern "system" fn Java_com_soma3d_app_NativeGeometry_addSphere(_env: JNIEnv, _class: JClass) -> jlong {
+pub extern "system" fn Java_com_soma3d_app_NativeGeometry_nativeAddSphere(_env: JNIEnv, _class: JClass) -> jlong {
     add_primitive(PrimitiveKind::UvSphere { radius: 1.0, segments: 20, rings: 12 }, "UV Sphere").unwrap_or(-1) as jlong
 }
 
 #[no_mangle]
-pub extern "system" fn Java_com_soma3d_app_NativeGeometry_setActiveObject(_env: JNIEnv, _class: JClass, id: jlong) -> jlong {
+pub extern "system" fn Java_com_soma3d_app_NativeGeometry_nativeSetActiveObject(_env: JNIEnv, _class: JClass, id: jlong) -> jlong {
     with_scene(|scene| {
         scene.set_active_object(Some(soma_geometry::ObjectId(id as u64)))
             .map_err(|error| format!("select object failed: {error:?}"))?;

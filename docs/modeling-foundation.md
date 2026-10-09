@@ -158,3 +158,5 @@ The proposed merge ratios are optimization targets, not a guarantee that arbitra
 - Scene primitives retain their `PrimitiveKind` and geometry revision. Parameter updates generate a replacement mesh before committing and preserve object identity and object transform.
 - `make_editable_mesh` converts a parametric primitive into ordinary mesh geometry without changing its current geometry, object ID, name, or transform. Subsequent parameter updates are rejected rather than silently overwriting direct topology work.
 - The scene is a platform-independent document foundation, not a rendered viewport. Picking, hierarchy UI, transform gizmos, serialization, duplication, and scene-level undo/redo remain later integrations.
+
+- `SceneObject::evaluated_mesh` returns a transformed mesh copy for viewport/render consumers while leaving stored local-space geometry untouched. Invalid object transforms return an error instead of partially changing scene geometry.

@@ -72,7 +72,7 @@ mod tests {
         let json = build_scene_json().expect("default scene should serialize");
         assert!(json.contains("\"positions\":["));
         assert!(json.contains("\"polygons\":["));
-        assert_eq!(json.matches('[').count(), 15);
+        assert_eq!(json.matches('[').count(), 16);
         assert!(json.contains("[-1.000000,-1.000000,-1.000000]"));
     }
 }

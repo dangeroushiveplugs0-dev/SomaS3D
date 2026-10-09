@@ -264,3 +264,9 @@ This is a roadmap item, not a claim that spatial drawing, text, effects, or imag
 - Current fan triangulation is intended for the convex polygons produced by the primitive and extrusion APIs. A robust triangulator is still needed before arbitrary concave imported polygons can be rendered safely.
 - This is not yet a visible GPU viewport: camera controls, shaders, lighting, picking, selection highlighting, and platform UI remain future work.
 
+## Viewport camera and polygon triangulation
+
+- `ViewportCamera` validates its pose, field of view, aspect ratio, and clipping planes before producing view, perspective, and combined matrices. Projection uses right-handed OpenGL-style clip space and exposes world-to-NDC plus top-left-origin screen conversion.
+- Viewport draw-buffer preparation now uses dominant-axis ear clipping for simple concave polygons rather than assuming every face is convex. Invalid or degenerate polygons do not emit surface triangles; their authored edges remain available in the wireframe buffer.
+- These are CPU-side building blocks only. A GPU backend, camera gestures/orbit/pan/zoom, fit-to-object, depth testing, lighting, selection/picking, and the actual application viewport remain unimplemented.
+

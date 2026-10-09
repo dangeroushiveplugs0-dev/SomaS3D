@@ -192,7 +192,10 @@ mod tests {
         );
         assert_eq!(
             result,
-            Err(MeshError::Uv(UvError::CornerOutOfRange { face, corner: 99 }))
+            Err(MeshError::Uv(UvError::CornerOutOfRange {
+                face,
+                corner: 99
+            }))
         );
         assert_eq!(mesh.uv_layer("UVMap").unwrap().get(face, 0), before);
     }

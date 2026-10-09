@@ -3,6 +3,7 @@
 mod document_editor;
 mod editor;
 mod hair;
+mod hair_render;
 mod history;
 mod material;
 mod material_eval;
@@ -17,6 +18,7 @@ mod uv;
 pub use document_editor::{DocumentEditError, SceneDocumentEditor};
 pub use editor::{EditorError, EditorState, ModelingEditor};
 pub use hair::{HairError, HairGuide, HairObject, HairPreset, HairSettings, MAX_GUIDE_STRANDS};
+pub use hair_render::EvaluatedHairGuides;
 pub use history::EditHistory;
 pub use material::{Material, MaterialSemantics, PbrMaterial};
 pub use material_eval::{evaluate, EvaluatedPbr};

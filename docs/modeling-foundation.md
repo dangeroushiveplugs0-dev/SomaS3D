@@ -66,3 +66,10 @@ SomaS3D also has a semantic material layer for properties such as wetness, dryne
 The modeling foundation is not considered complete because basic tools exist. It must survive stress tests involving large meshes, many UV islands, heavy seam counts, non-manifold topology, duplicated/stacked UVs, invalid UV values, and repeated edit operations.
 
 Only after the core passes these tests should character, physics, FEM, or advanced importer work become the primary focus.
+
+## Face extrusion
+
+- `Mesh::extrude_face` duplicates a single face's vertices, retains the original face, creates a new cap and one side quad per source edge, and returns the created IDs.
+- The cap copies available per-corner UV coordinates from the source face. Side UVs use a predictable world-unit rectangle (source-edge length by extrusion distance); this is a starting policy for later interactive UV refinement, not automatic unwrap.
+- Non-finite offsets, overflowed positions, invalid face IDs, and non-finite derived lengths are rejected before topology changes.
+- This is a core mesh operation; interactive extrusion handles, live preview, and undo/redo are still future layers.

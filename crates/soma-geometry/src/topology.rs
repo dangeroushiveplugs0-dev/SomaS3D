@@ -430,10 +430,10 @@ impl Mesh {
         }
 
         for (old_index, old_edge) in old_edges.iter().enumerate() {
-            if let Some(&new_id) = self.edge_lookup.get(&edge_key(
-                old_edge.vertices[0],
-                old_edge.vertices[1],
-            )) {
+            if let Some(&new_id) = self
+                .edge_lookup
+                .get(&edge_key(old_edge.vertices[0], old_edge.vertices[1]))
+            {
                 edge_map.insert(EdgeId(old_index as u32), new_id);
             }
         }

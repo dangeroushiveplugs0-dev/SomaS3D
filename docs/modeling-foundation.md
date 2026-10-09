@@ -69,7 +69,7 @@ Only after the core passes these tests should character, physics, FEM, or advanc
 
 ## Face extrusion
 
-- `Mesh::extrude_face` duplicates a single face's vertices, retains the original face, creates a new cap and one side quad per source edge, and returns the created IDs.
+- `Mesh::extrude_face` replaces the selected face with a new cap and one side quad per source edge, duplicating its vertices and returning the created IDs plus a remap for neighboring faces and surviving edges.
 - The cap copies available per-corner UV coordinates from the source face. Side UVs use a predictable world-unit rectangle (source-edge length by extrusion distance); this is a starting policy for later interactive UV refinement, not automatic unwrap.
 - Non-finite offsets, overflowed positions, invalid face IDs, and non-finite derived lengths are rejected before topology changes.
 - This is a core mesh operation; interactive extrusion handles, live preview, and undo/redo are still future layers.

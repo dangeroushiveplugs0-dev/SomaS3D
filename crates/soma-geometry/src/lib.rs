@@ -10,7 +10,7 @@ pub use material::{Material, MaterialSemantics, PbrMaterial};
 pub use material_eval::{evaluate, EvaluatedPbr};
 pub use selection::{Selection, SelectionMode};
 pub use topology::{
-    CornerId, Edge, EdgeId, Face, FaceId, Mesh, MeshError, TopologyIssue, Vertex, VertexId,
+    CornerId, Edge, EdgeId, Face, FaceId, Mesh, MeshError, TopologyIssue, TopologyRemap, Vertex, VertexId,
 };
 pub use uv::{Uv, UvCorner, UvError, UvIsland, UvLayer, UvTransform};
 
@@ -279,4 +279,56 @@ mod tests {
         );
         assert_eq!(mesh.vertex_position(a), Some([0.0, 0.0, 0.0]));
     }
+
+    #[test]
+    fn deleting_a_face_rebuilds_adjacency_and_remaps_uvs() {
+        let mut mesh = Mesh::new();
+        let a = mesh.add_vertex([0.0, 0.0, 0.0]);
+        let b = mesh.add_vertex([1.0, 0.0, 0.0]);
+        let c = mesh.add_vertex([1.0, 1.0, 0.0]);
+        let d = mesh.add_vertex([0.0, 1.0, 0.0]);
+        let e = mesh.add_vertex([2.0, 0.0, 0.0]);
+        let f = mesh.add_vertex([2.0, 1.0, 0.0]);
+        let first = mesh.add_face(&[a, b, c, d]).unwrap();
+        let second = mesh.add_face(&[b, e, f, c]).unwrap();
+
+        for corner in 0..4 {
+            mesh.set_uv("UVMap", first, corner, Uv::new(corner as f32, 0.0))
+                .unwrap();
+            mesh.set_uv(
+                "UVMap",
+                second,
+                corner,
+                Uv::new(10.0 + corner as f32, 1.0),
+            )
+            .unwrap();
+        }
+        let shared = mesh.edge_between(b, c).unwrap();
+        mesh.set_edge_seam(shared, true).unwrap();
+
+        let remap = mesh.remove_face(first).unwrap();
+
+        assert_eq!(mesh.face_count(), 1);
+        assert_eq!(mesh.edge_count(), 4);
+        assert_eq!(remap.faces.get(&second), Some(&FaceId(0)));
+        assert_eq!(mesh.uv_layer("UVMap").unwrap().get(FaceId(0), 2), Some(Uv::new(12.0, 1.0)));
+        assert_eq!(mesh.edge(mesh.edge_between(b, c).unwrap()).unwrap().seam, true);
+        assert!(mesh.validate_topology().is_empty());
+        mesh.validate_uv_layer("UVMap").unwrap();
+    }
+
+    #[test]
+    fn deleting_a_missing_face_does_not_mutate_mesh() {
+        let mut mesh = Mesh::new();
+        let a = mesh.add_vertex([0.0, 0.0, 0.0]);
+        let b = mesh.add_vertex([1.0, 0.0, 0.0]);
+        let c = mesh.add_vertex([0.0, 1.0, 0.0]);
+        mesh.add_face(&[a, b, c]).unwrap();
+
+        assert_eq!(mesh.remove_face(FaceId(99)), Err(MeshError::FaceNotFound(FaceId(99))));
+        assert_eq!(mesh.face_count(), 1);
+        assert_eq!(mesh.edge_count(), 3);
+        assert!(mesh.validate_topology().is_empty());
+    }
+
 }

@@ -159,6 +159,19 @@ impl ModelingEditor {
         }
         let mut selected_count = 0;
         self.history.apply(|state| {
+            let mut incident_edges = vec![Vec::new(); state.mesh.vertex_count()];
+            for index in 0..state.mesh.edge_count() {
+                let edge_id = EdgeId(index as u32);
+                let Some(edge) = state.mesh.edge(edge_id) else {
+                    continue;
+                };
+                for vertex in edge.vertices {
+                    if let Some(edges) = incident_edges.get_mut(vertex.0 as usize) {
+                        edges.push(edge_id);
+                    }
+                }
+            }
+
             let mut visited = HashSet::new();
             let mut queue = VecDeque::from([seed]);
             while let Some(edge_id) = queue.pop_front() {
@@ -166,20 +179,14 @@ impl ModelingEditor {
                     continue;
                 }
                 let edge = state.mesh.edge(edge_id).expect("queued edge was validated");
-                let endpoints = edge.vertices;
-                for index in 0..state.mesh.edge_count() {
-                    let candidate = EdgeId(index as u32);
-                    if visited.contains(&candidate) {
-                        continue;
-                    }
-                    let Some(other) = state.mesh.edge(candidate) else {
+                for vertex in edge.vertices {
+                    let Some(adjacent_edges) = incident_edges.get(vertex.0 as usize) else {
                         continue;
                     };
-                    if endpoints
-                        .iter()
-                        .any(|vertex| other.vertices.contains(vertex))
-                    {
-                        queue.push_back(candidate);
+                    for &candidate in adjacent_edges {
+                        if !visited.contains(&candidate) {
+                            queue.push_back(candidate);
+                        }
                     }
                 }
             }
@@ -516,4 +523,42 @@ mod tests {
         }
         assert_eq!(editor.state().mesh.face_count(), 33);
     }
+    #[test]
+    fn connected_edge_selection_scales_to_dense_grid_meshes_and_is_undoable() {
+        let side = 40usize;
+        let mut mesh = Mesh::new();
+        let mut vertices = vec![vec![VertexId(0); side + 1]; side + 1];
+
+        for (y, row) in vertices.iter_mut().enumerate() {
+            for (x, vertex) in row.iter_mut().enumerate() {
+                *vertex = mesh.add_vertex([x as f32, y as f32, 0.0]);
+            }
+        }
+
+        for y in 0..side {
+            for x in 0..side {
+                mesh.add_face(&[
+                    vertices[y][x],
+                    vertices[y][x + 1],
+                    vertices[y + 1][x + 1],
+                    vertices[y + 1][x],
+                ])
+                .unwrap();
+            }
+        }
+
+        let expected_edges = 2 * side * (side + 1);
+        assert_eq!(mesh.edge_count(), expected_edges);
+        assert!(mesh.validate_topology().is_empty());
+
+        let mut editor = ModelingEditor::new(mesh, 4);
+        assert_eq!(editor.select_connected_edges(EdgeId(0)).unwrap(), expected_edges);
+        assert_eq!(editor.state().selection().edges().count(), expected_edges);
+
+        assert!(editor.undo());
+        assert!(editor.state().selection().is_empty());
+        assert!(editor.redo());
+        assert_eq!(editor.state().selection().edges().count(), expected_edges);
+    }
+
 }

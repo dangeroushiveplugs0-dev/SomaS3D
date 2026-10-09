@@ -243,4 +243,43 @@ mod tests {
                 incident_faces: 3,
             }));
     }
+    #[test]
+    fn vertex_translation_updates_only_requested_vertices() {
+        let mut mesh = Mesh::new();
+        let a = mesh.add_vertex([0.0, 0.0, 0.0]);
+        let b = mesh.add_vertex([1.0, 0.0, 0.0]);
+        mesh.translate_vertices(&[b], [0.0, 2.0, -1.0]).unwrap();
+
+        assert_eq!(mesh.vertex_position(a), Some([0.0, 0.0, 0.0]));
+        assert_eq!(mesh.vertex_position(b), Some([1.0, 2.0, -1.0]));
+    }
+
+    #[test]
+    fn invalid_vertex_update_is_atomic() {
+        let mut mesh = Mesh::new();
+        let a = mesh.add_vertex([0.0, 0.0, 0.0]);
+        let b = mesh.add_vertex([1.0, 0.0, 0.0]);
+
+        let result = mesh.set_vertex_positions(&[
+            (a, [5.0, 5.0, 5.0]),
+            (b, [f32::INFINITY, 0.0, 0.0]),
+        ]);
+
+        assert_eq!(result, Err(MeshError::NonFinitePosition));
+        assert_eq!(mesh.vertex_position(a), Some([0.0, 0.0, 0.0]));
+        assert_eq!(mesh.vertex_position(b), Some([1.0, 0.0, 0.0]));
+    }
+
+    #[test]
+    fn duplicate_vertex_updates_are_rejected() {
+        let mut mesh = Mesh::new();
+        let a = mesh.add_vertex([0.0, 0.0, 0.0]);
+
+        assert_eq!(
+            mesh.set_vertex_positions(&[(a, [1.0, 0.0, 0.0]), (a, [2.0, 0.0, 0.0])]),
+            Err(MeshError::DuplicateVertexUpdate(a))
+        );
+        assert_eq!(mesh.vertex_position(a), Some([0.0, 0.0, 0.0]));
+    }
+
 }

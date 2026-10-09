@@ -60,14 +60,13 @@ pub fn generate_primitive(kind: PrimitiveKind) -> Result<Mesh, PrimitiveError> {
                 mesh.add_vertex([h, h, h]),
                 mesh.add_vertex([-h, h, h]),
             ];
-            let face_uvs = [
-                [Uv::new(0.0, 0.0), Uv::new(1.0, 0.0), Uv::new(1.0, 1.0), Uv::new(0.0, 1.0)],
-                [Uv::new(0.0, 0.0), Uv::new(1.0, 0.0), Uv::new(1.0, 1.0), Uv::new(0.0, 1.0)],
-                [Uv::new(0.0, 0.0), Uv::new(1.0, 0.0), Uv::new(1.0, 1.0), Uv::new(0.0, 1.0)],
-                [Uv::new(0.0, 0.0), Uv::new(1.0, 0.0), Uv::new(1.0, 1.0), Uv::new(0.0, 1.0)],
-                [Uv::new(0.0, 0.0), Uv::new(1.0, 0.0), Uv::new(1.0, 1.0), Uv::new(0.0, 1.0)],
-                [Uv::new(0.0, 0.0), Uv::new(1.0, 0.0), Uv::new(1.0, 1.0), Uv::new(0.0, 1.0)],
+            let face_uv = [
+                Uv::new(0.0, 0.0),
+                Uv::new(1.0, 0.0),
+                Uv::new(1.0, 1.0),
+                Uv::new(0.0, 1.0),
             ];
+            let face_uvs = [face_uv; 6];
             for (face, uvs) in [
                 [vertices[0], vertices[3], vertices[2], vertices[1]],
                 [vertices[4], vertices[5], vertices[6], vertices[7]],
@@ -204,11 +203,7 @@ pub fn generate_primitive(kind: PrimitiveKind) -> Result<Mesh, PrimitiveError> {
     }
 }
 
-fn set_face_uvs(
-    mesh: &mut Mesh,
-    face: crate::FaceId,
-    uvs: &[Uv],
-) -> Result<(), PrimitiveError> {
+fn set_face_uvs(mesh: &mut Mesh, face: crate::FaceId, uvs: &[Uv]) -> Result<(), PrimitiveError> {
     for (corner, uv) in uvs.iter().copied().enumerate() {
         mesh.set_uv("UVMap", face, corner, uv)?;
     }

@@ -207,3 +207,35 @@ The reference image is a shading goal, not a promise that the current geometry f
 - Mesh edits commit back to the object's local-space geometry. The object's ID and object-level transform remain unchanged, and the first direct topology/vertex edit converts a parametric primitive to ordinary editable mesh geometry.
 - Undo and redo synchronize the selected object's restored mesh back into the scene. Switching active objects does not discard the other object's edit history.
 - Current wrapper commands include component selection, selected-vertex transforms, face extrusion, face deletion, and per-object undo/redo. Scene creation/removal and object transforms are not yet part of the mesh undo stack; those require a document-level transaction history.
+
+
+## In-space drawing, text, and render effects (planned)
+
+SomaS3D should include a native **In-Space Studio** for drawing and placing graphic elements directly inside the 3D scene, so creators can produce a finished composition without exporting a render to a separate drawing app.
+
+### Spatial creation tools
+
+- **3D drawing:** draw freehand strokes in a chosen plane, on a model surface, or facing the camera. Support adjustable brush size, color, opacity, smoothing, pressure when available, and erase/undo.
+- **3D text:** place text in the scene with font, size, alignment, extrusion/bevel options where supported, color/material, and controls to orient it toward the world, a selected surface, or the camera.
+- **2D overlay layers:** add screen-facing annotations, captions, graphic marks, frames, and decorative elements that belong to the saved scene/render composition rather than being painted onto the exported image afterward.
+- **Effects:** provide non-destructive glow, neon strokes, particles/sparkles, trails, light streaks, depth-aware blur, and color grading as staged features. Each effect should expose practical presets and a small set of controls.
+- **Composition controls:** layers, visibility, ordering where relevant, lock, duplicate, group, opacity, and per-element transforms. Distinguish world-space elements from camera-facing overlays in the UI.
+- **Capture workflow:** a final-render mode should include these elements in the render and export a clean image directly. Provide a toggle to hide editor gizmos, selection outlines, and guides before capture.
+
+### Data and rendering architecture
+
+- Store strokes as editable curve/control-point data where possible, with a separate render representation. Do not bake strokes or text destructively into the base mesh.
+- Store text as editable text plus typography/layout settings; convert to mesh only when the user explicitly requests geometry or an effect requires it.
+- Keep camera-facing graphics separate from world-space geometry so they can remain crisp and readable without unexpectedly moving with the camera.
+- Effects should be non-destructive, budgeted for mobile GPUs, and degrade gracefully through quality presets. Preview quality and final-render quality can differ.
+- Make spatial strokes selectable and, later, optionally riggable or attached to an object/surface. Surface-attached strokes should retain stable attachment data instead of relying only on fixed world coordinates.
+
+### Delivery order
+
+1. Add document data types for strokes, text objects, overlay layers, and effect settings.
+2. Add basic drawing planes/surface projection, editable stroke selection, transforms, and undo/redo.
+3. Add editable text placement and camera-facing overlay elements.
+4. Add a render-composition pass that includes these elements and supports clean image export.
+5. Add mobile-friendly effect presets incrementally, profiling on-device before enabling expensive effects by default.
+
+This is a roadmap item, not a claim that spatial drawing, text, effects, or image export are implemented today.

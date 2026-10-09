@@ -455,12 +455,7 @@ mod tests {
             )
             .unwrap();
         assert!(editor.undo());
-        let before = editor
-            .state()
-            .mesh
-            .uv_layer("UVMap")
-            .unwrap()
-            .get(face, 0);
+        let before = editor.state().mesh.uv_layer("UVMap").unwrap().get(face, 0);
 
         assert!(matches!(
             editor.transform_uv_corners(

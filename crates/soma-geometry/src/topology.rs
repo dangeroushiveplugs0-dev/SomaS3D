@@ -171,7 +171,7 @@ pub struct ExtrusionResult {
     pub topology_remap: TopologyRemap,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Mesh {
     vertices: Vec<Vertex>,
     edges: Vec<Edge>,

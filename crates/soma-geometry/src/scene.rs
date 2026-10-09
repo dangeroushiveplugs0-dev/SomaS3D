@@ -176,9 +176,7 @@ impl Scene {
         id: ObjectId,
         kind: PrimitiveKind,
     ) -> Result<(), SceneError> {
-        let object = self
-            .object_mut(id)
-            .ok_or(SceneError::ObjectNotFound(id))?;
+        let object = self.object_mut(id).ok_or(SceneError::ObjectNotFound(id))?;
         let (old_kind, old_revision) = match &object.geometry {
             ObjectGeometry::Parametric { kind, revision, .. } => (*kind, *revision),
             ObjectGeometry::Mesh(_) => return Err(SceneError::NotParametric(id)),
@@ -264,11 +262,14 @@ mod tests {
     fn parameter_updates_preserve_identity_transform_and_are_atomic() {
         let mut scene = Scene::new();
         let id = scene
-            .add_primitive("Sphere", PrimitiveKind::UvSphere {
-                radius: 1.0,
-                segments: 8,
-                rings: 4,
-            })
+            .add_primitive(
+                "Sphere",
+                PrimitiveKind::UvSphere {
+                    radius: 1.0,
+                    segments: 8,
+                    rings: 4,
+                },
+            )
             .unwrap();
         let transform = Transform3D {
             translation: [3.0, 2.0, -1.0],
@@ -276,11 +277,14 @@ mod tests {
         };
         scene.object_mut(id).unwrap().set_transform(transform);
         scene
-            .update_primitive(id, PrimitiveKind::UvSphere {
-                radius: 2.0,
-                segments: 8,
-                rings: 4,
-            })
+            .update_primitive(
+                id,
+                PrimitiveKind::UvSphere {
+                    radius: 2.0,
+                    segments: 8,
+                    rings: 4,
+                },
+            )
             .unwrap();
         let object = scene.object(id).unwrap();
         assert_eq!(object.id(), id);
@@ -330,8 +334,12 @@ mod tests {
     #[test]
     fn removing_active_object_clears_active_id_and_keeps_other_objects() {
         let mut scene = Scene::new();
-        let first = scene.add_primitive("A", PrimitiveKind::Cube { size: 1.0 }).unwrap();
-        let second = scene.add_primitive("B", PrimitiveKind::Cube { size: 2.0 }).unwrap();
+        let first = scene
+            .add_primitive("A", PrimitiveKind::Cube { size: 1.0 })
+            .unwrap();
+        let second = scene
+            .add_primitive("B", PrimitiveKind::Cube { size: 2.0 })
+            .unwrap();
         scene.remove_object(second).unwrap();
         assert_eq!(scene.active_object_id(), None);
         assert!(scene.object(first).is_some());
@@ -341,7 +349,9 @@ mod tests {
     #[test]
     fn invalid_active_object_does_not_change_active_state() {
         let mut scene = Scene::new();
-        let id = scene.add_primitive("Cube", PrimitiveKind::Cube { size: 1.0 }).unwrap();
+        let id = scene
+            .add_primitive("Cube", PrimitiveKind::Cube { size: 1.0 })
+            .unwrap();
         assert_eq!(
             scene.set_active_object(Some(ObjectId(99))),
             Err(SceneError::ObjectNotFound(ObjectId(99)))

@@ -1,7 +1,7 @@
 use std::collections::{HashSet, VecDeque};
 
 use crate::{
-    EditHistory, EdgeId, FaceId, Mesh, MeshError, Selection, SelectionMode, Transform3D, VertexId,
+    EdgeId, EditHistory, FaceId, Mesh, MeshError, Selection, SelectionMode, Transform3D, VertexId,
 };
 
 /// Mesh and component selection form one undoable editor state.

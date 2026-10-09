@@ -117,7 +117,6 @@ impl ModelingEditor {
             return Err(MeshError::FaceNotFound(seed).into());
         }
         let mut selected_count = 0;
-        let mut selected_count = 0;
         self.history.apply(|state| {
             let mut visited = HashSet::new();
             let mut queue = VecDeque::from([seed]);
@@ -148,7 +147,7 @@ impl ModelingEditor {
                 state.selection.select_face(*face);
             }
             selected_count = visited.len();
-            Ok(())
+            Ok::<(), EditorError>(())
         })?;
         Ok(selected_count)
     }
@@ -158,6 +157,7 @@ impl ModelingEditor {
         if self.state().mesh.edge(seed).is_none() {
             return Err(EditorError::EdgeNotFound(seed));
         }
+        let mut selected_count = 0;
         self.history.apply(|state| {
             let mut visited = HashSet::new();
             let mut queue = VecDeque::from([seed]);
@@ -187,7 +187,7 @@ impl ModelingEditor {
                 state.selection.select_edge(*edge);
             }
             selected_count = visited.len();
-            Ok(())
+            Ok::<(), EditorError>(())
         })?;
         Ok(selected_count)
     }

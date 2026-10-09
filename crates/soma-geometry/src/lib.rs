@@ -9,7 +9,9 @@ mod uv;
 pub use material::{Material, MaterialSemantics, PbrMaterial};
 pub use material_eval::{evaluate, EvaluatedPbr};
 pub use selection::{Selection, SelectionMode};
-pub use topology::{CornerId, Edge, EdgeId, Face, FaceId, Mesh, MeshError, TopologyIssue, Vertex, VertexId};
+pub use topology::{
+    CornerId, Edge, EdgeId, Face, FaceId, Mesh, MeshError, TopologyIssue, Vertex, VertexId,
+};
 pub use uv::{Uv, UvCorner, UvError, UvIsland, UvLayer, UvTransform};
 
 #[cfg(test)]
@@ -190,13 +192,11 @@ mod tests {
         );
         assert_eq!(
             result,
-            Err(MeshError::Uv(UvError::CornerOutOfRange {
-                face,
-                corner: 99
-            }))
+            Err(MeshError::Uv(UvError::CornerOutOfRange { face, corner: 99 }))
         );
         assert_eq!(mesh.uv_layer("UVMap").unwrap().get(face, 0), before);
     }
+
     #[test]
     fn topology_validation_accepts_a_consistent_quad() {
         let mut mesh = Mesh::new();
@@ -233,10 +233,11 @@ mod tests {
         mesh.add_face(&[a, b, e]).unwrap();
 
         let shared = mesh.edge_between(a, b).unwrap();
-        assert!(mesh.validate_topology().contains(&TopologyIssue::NonManifoldEdge {
-            edge: shared,
-            incident_faces: 3,
-        }));
+        assert!(mesh
+            .validate_topology()
+            .contains(&TopologyIssue::NonManifoldEdge {
+                edge: shared,
+                incident_faces: 3,
+            }));
     }
-
 }

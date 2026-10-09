@@ -100,9 +100,17 @@ Only after the core passes these tests should character, physics, FEM, or advanc
 - Both operations add to the current selection and are undoable through the editor history.
 - Tests cover adjacent faces, connected edge loops, and restoring selection through undo/redo.
 
-## Primitive system and procedural hair (planned)
+## Primitive system and procedural hair
 
 Primitives should be first-class modeling objects, not just a fixed menu of cube/sphere meshes. Standard geometric primitives can be added alongside specialized procedural primitives such as hair. Hair is generated from selected surface faces, so the user can select a scalp, armpit, or other growth region and choose a hair preset.
+
+### Implemented geometry-core slice
+
+- `HairObject` is a separate procedural data object; generating hair does not modify the source body's mesh.
+- `HairPreset` currently defines **Flowing Hair** and **Short Hair**. `HairSettings` provides length, normalized curl and gravity, independent RGBA color, guide amount, and deterministic seed, with preset defaults.
+- Guide roots are sampled over selected face areas, weighted by surface area, and oriented by face normals. Each guide has a compact six-point curve representation for later batched rendering.
+- Repeating generation with the same source mesh, face selection, and settings produces the same guides. Invalid selections/settings are rejected, guide generation is capped at 50,000 guides, and failed restyling preserves the existing object.
+- This is the first procedural geometry layer only. Hair is not yet registered as a `SceneObject`, rendered in a viewport, skinned to a deforming character, or controlled by a floating/docked UI. The short-hair length limits and density presets still need real viewport/device tuning.
 
 ### Hair creation workflow
 

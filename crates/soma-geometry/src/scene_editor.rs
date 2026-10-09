@@ -65,8 +65,14 @@ impl SceneModelingEditor {
             .active_object_id()
             .ok_or(SceneModelingError::NoActiveObject)?;
         if !self.editors.contains_key(&id) {
-            let mesh = self.scene.object(id).ok_or(SceneError::ObjectNotFound(id))?.mesh().clone();
-            self.editors.insert(id, ModelingEditor::new(mesh, self.undo_limit));
+            let mesh = self
+                .scene
+                .object(id)
+                .ok_or(SceneError::ObjectNotFound(id))?
+                .mesh()
+                .clone();
+            self.editors
+                .insert(id, ModelingEditor::new(mesh, self.undo_limit));
         }
         Ok(id)
     }

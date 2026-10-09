@@ -21,7 +21,7 @@ The PBR material data model and semantic material evaluator are already part of 
 - Removing a face rebuilds edge adjacency and removes edges no longer used by any face.
 - Per-corner UV values are remapped with surviving face IDs; deleted-face UV values are discarded.
 - Existing seam flags are preserved for edges that survive. Vertex IDs remain unchanged.
-- Because face and edge IDs are compact vector indices, callers must apply the returned `TopologyRemap` to selections and other ID-based data.
+- Because face and edge IDs are compact vector indices, callers must apply the returned `TopologyRemap` to selections and other ID-based data. `Selection::apply_topology_remap` updates selected surviving edges/faces and drops deleted components.
 
 ## Vertex editing
 

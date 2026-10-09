@@ -10,7 +10,7 @@ pub use material::{Material, MaterialSemantics, PbrMaterial};
 pub use material_eval::{evaluate, EvaluatedPbr};
 pub use selection::{Selection, SelectionMode};
 pub use topology::{
-    CornerId, Edge, EdgeId, Face, FaceId, Mesh, MeshError, TopologyIssue, TopologyRemap, Vertex,
+    CornerId, Edge, EdgeId, Face, FaceId, Mesh, MeshError, TopologyIssue, TopologyRemap, Transform3D, Vertex,
     VertexId,
 };
 pub use uv::{Uv, UvCorner, UvError, UvIsland, UvLayer, UvTransform};
@@ -244,6 +244,37 @@ mod tests {
                 incident_faces: 3,
             }));
     }
+    #[test]
+    fn transform_vertices_scales_and_rotates_around_pivot_atomically() {
+        let mut mesh = Mesh::new();
+        let a = mesh.add_vertex([2.0, 0.0, 0.0]);
+        let untouched = mesh.add_vertex([9.0, 9.0, 9.0]);
+        let transform = Transform3D {
+            rotation: [0.0, 0.0, std::f32::consts::FRAC_PI_2],
+            scale: [2.0, 1.0, 1.0],
+            pivot: [1.0, 0.0, 0.0],
+            ..Transform3D::default()
+        };
+
+        mesh.transform_vertices(&[a], transform).unwrap();
+        let result = mesh.vertex_position(a).unwrap();
+        assert!(result[0].abs() < 1e-5);
+        assert!((result[1] - 2.0).abs() < 1e-5);
+        assert_eq!(mesh.vertex_position(untouched), Some([9.0, 9.0, 9.0]));
+    }
+
+    #[test]
+    fn transform_vertices_rejects_invalid_selection_without_partial_changes() {
+        let mut mesh = Mesh::new();
+        let a = mesh.add_vertex([1.0, 0.0, 0.0]);
+        let before = mesh.vertex_position(a);
+        assert_eq!(
+            mesh.transform_vertices(&[a, VertexId(99)], Transform3D::default()),
+            Err(MeshError::InvalidVertex(VertexId(99)))
+        );
+        assert_eq!(mesh.vertex_position(a), before);
+    }
+
     #[test]
     fn vertex_translation_updates_only_requested_vertices() {
         let mut mesh = Mesh::new();

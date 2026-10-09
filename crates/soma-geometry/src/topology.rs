@@ -45,6 +45,22 @@ pub enum MeshError {
     Uv(UvError),
 }
 
+/// A diagnostic found while validating editable mesh topology.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TopologyIssue {
+    NonFiniteVertexPosition(VertexId),
+    FaceTooSmall(FaceId),
+    InvalidVertexReference { face: FaceId, vertex: VertexId },
+    DuplicateVertexInFace { face: FaceId, vertex: VertexId },
+    MissingEdgeForFace { face: FaceId, a: VertexId, b: VertexId },
+    InvalidEdgeEndpoint { edge: EdgeId, vertex: VertexId },
+    DuplicateEdge { edge: EdgeId, other: EdgeId },
+    EdgeLookupMismatch { edge: EdgeId },
+    InvalidEdgeFaceReference { edge: EdgeId, face: FaceId },
+    EdgeFaceMismatch { edge: EdgeId, face: FaceId },
+    NonManifoldEdge { edge: EdgeId, incident_faces: usize },
+}
+
 #[derive(Debug, Default)]
 pub struct Mesh {
     vertices: Vec<Vertex>,
@@ -69,6 +85,145 @@ impl Mesh {
 
     pub fn face_count(&self) -> usize {
         self.faces.len()
+    }
+
+    /// Checks mesh connectivity and reports every detected issue.
+    ///
+    /// Non-manifold edges are reported as diagnostics rather than silently
+    /// repaired; callers can decide whether a particular operation supports them.
+    pub fn validate_topology(&self) -> Vec<TopologyIssue> {
+        let mut issues = Vec::new();
+
+        for (index, vertex) in self.vertices.iter().enumerate() {
+            if !vertex.position.iter().all(|component| component.is_finite()) {
+                issues.push(TopologyIssue::NonFiniteVertexPosition(VertexId(index as u32)));
+            }
+        }
+
+        for (index, face) in self.faces.iter().enumerate() {
+            let face_id = FaceId(index as u32);
+            if face.vertices.len() < 3 {
+                issues.push(TopologyIssue::FaceTooSmall(face_id));
+            }
+
+            for (corner, &vertex) in face.vertices.iter().enumerate() {
+                if vertex.0 as usize >= self.vertices.len() {
+                    issues.push(TopologyIssue::InvalidVertexReference {
+                        face: face_id,
+                        vertex,
+                    });
+                }
+                if face.vertices[..corner].contains(&vertex) {
+                    issues.push(TopologyIssue::DuplicateVertexInFace {
+                        face: face_id,
+                        vertex,
+                    });
+                }
+
+                if face.vertices.len() >= 2 {
+                    let next = face.vertices[(corner + 1) % face.vertices.len()];
+                    if vertex.0 as usize < self.vertices.len()
+                        && next.0 as usize < self.vertices.len()
+                        && !self.edge_lookup.contains_key(&edge_key(vertex, next))
+                    {
+                        issues.push(TopologyIssue::MissingEdgeForFace {
+                            face: face_id,
+                            a: vertex,
+                            b: next,
+                        });
+                    }
+                }
+            }
+        }
+
+        let mut seen_edges: HashMap<(u32, u32), EdgeId> = HashMap::new();
+        for (index, edge) in self.edges.iter().enumerate() {
+            let edge_id = EdgeId(index as u32);
+            let [a, b] = edge.vertices;
+            if a == b || a.0 as usize >= self.vertices.len() {
+                issues.push(TopologyIssue::InvalidEdgeEndpoint {
+                    edge: edge_id,
+                    vertex: a,
+                });
+            }
+            if a == b || b.0 as usize >= self.vertices.len() {
+                issues.push(TopologyIssue::InvalidEdgeEndpoint {
+                    edge: edge_id,
+                    vertex: b,
+                });
+            }
+
+            let key = edge_key(a, b);
+            if let Some(other) = seen_edges.insert(key, edge_id) {
+                issues.push(TopologyIssue::DuplicateEdge {
+                    edge: edge_id,
+                    other,
+                });
+            }
+            if self.edge_lookup.get(&key) != Some(&edge_id) {
+                issues.push(TopologyIssue::EdgeLookupMismatch { edge: edge_id });
+            }
+
+            if edge.faces.len() > 2 {
+                issues.push(TopologyIssue::NonManifoldEdge {
+                    edge: edge_id,
+                    incident_faces: edge.faces.len(),
+                });
+            }
+
+            for &face_id in &edge.faces {
+                let Some(face) = self.faces.get(face_id.0 as usize) else {
+                    issues.push(TopologyIssue::InvalidEdgeFaceReference {
+                        edge: edge_id,
+                        face: face_id,
+                    });
+                    continue;
+                };
+                let uses_edge = face.vertices.iter().enumerate().any(|(corner, &v0)| {
+                    let v1 = face.vertices[(corner + 1) % face.vertices.len()];
+                    edge_key(v0, v1) == key
+                });
+                if !uses_edge {
+                    issues.push(TopologyIssue::EdgeFaceMismatch {
+                        edge: edge_id,
+                        face: face_id,
+                    });
+                }
+            }
+        }
+
+        for (&key, &edge_id) in &self.edge_lookup {
+            let Some(edge) = self.edges.get(edge_id.0 as usize) else {
+                issues.push(TopologyIssue::EdgeLookupMismatch { edge: edge_id });
+                continue;
+            };
+            if edge_key(edge.vertices[0], edge.vertices[1]) != key {
+                issues.push(TopologyIssue::EdgeLookupMismatch { edge: edge_id });
+            }
+        }
+
+        for (face_index, face) in self.faces.iter().enumerate() {
+            let face_id = FaceId(face_index as u32);
+            for corner in 0..face.vertices.len() {
+                let a = face.vertices[corner];
+                let b = face.vertices[(corner + 1) % face.vertices.len()];
+                let Some(&edge_id) = self.edge_lookup.get(&edge_key(a, b)) else {
+                    continue;
+                };
+                let Some(edge) = self.edges.get(edge_id.0 as usize) else {
+                    issues.push(TopologyIssue::EdgeLookupMismatch { edge: edge_id });
+                    continue;
+                };
+                if !edge.faces.contains(&face_id) {
+                    issues.push(TopologyIssue::EdgeFaceMismatch {
+                        edge: edge_id,
+                        face: face_id,
+                    });
+                }
+            }
+        }
+
+        issues
     }
 
     pub fn add_vertex(&mut self, position: [f32; 3]) -> VertexId {

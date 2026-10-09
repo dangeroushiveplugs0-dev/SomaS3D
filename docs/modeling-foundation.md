@@ -23,6 +23,11 @@ The PBR material data model and semantic material evaluator are already part of 
 - Existing seam flags are preserved for edges that survive. Vertex IDs remain unchanged.
 - Because face and edge IDs are compact vector indices, callers must apply the returned `TopologyRemap` to selections and other ID-based data. `Selection::apply_topology_remap` updates selected surviving edges/faces and drops deleted components.
 
+## Transform primitives
+
+- `Transform3D` supports translation, XYZ Euler rotation in radians, scale, and a shared pivot.
+- `Mesh::transform_vertices` validates and applies the selected-vertex transform atomically. This is geometry-core functionality for future viewport move/rotate/scale gizmos; it is not a viewport or interactive gizmo implementation.
+
 ## Vertex editing
 
 - Multi-vertex position changes validate every vertex ID and every coordinate before changing any position.

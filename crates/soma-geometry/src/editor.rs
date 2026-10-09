@@ -1,4 +1,6 @@
-use crate::{EditHistory, FaceId, Mesh, MeshError, Selection, SelectionMode, Transform3D, VertexId};
+use crate::{
+    EditHistory, FaceId, Mesh, MeshError, Selection, SelectionMode, Transform3D, VertexId,
+};
 
 /// Mesh and component selection form one undoable editor state.
 #[derive(Debug, Clone)]
@@ -145,10 +147,7 @@ impl ModelingEditor {
     }
 
     /// Extrudes exactly one selected face and selects the new cap.
-    pub fn extrude_selected_face(
-        &mut self,
-        offset: [f32; 3],
-    ) -> Result<(), EditorError> {
+    pub fn extrude_selected_face(&mut self, offset: [f32; 3]) -> Result<(), EditorError> {
         self.history.apply(|state| {
             let faces: Vec<_> = state.selection.faces().collect();
             if faces.is_empty() {
@@ -216,7 +215,10 @@ mod tests {
             Some([before[0], before[1], 2.0])
         );
         assert!(editor.undo());
-        assert_eq!(editor.state().mesh.vertex_position(vertices[0]), Some(before));
+        assert_eq!(
+            editor.state().mesh.vertex_position(vertices[0]),
+            Some(before)
+        );
         assert!(editor.redo());
         assert_eq!(
             editor.state().mesh.vertex_position(vertices[0]),

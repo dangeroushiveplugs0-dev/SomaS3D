@@ -158,6 +158,17 @@ pub struct TopologyRemap {
     pub edges: HashMap<EdgeId, EdgeId>,
 }
 
+/// IDs created by a successful single-face extrusion.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExtrusionResult {
+    /// Duplicated vertices forming the extruded face, in source-corner order.
+    pub vertices: Vec<VertexId>,
+    /// The new face at the end of the extrusion.
+    pub top_face: FaceId,
+    /// Side faces, in source-edge order.
+    pub side_faces: Vec<FaceId>,
+}
+
 #[derive(Debug, Default)]
 pub struct Mesh {
     vertices: Vec<Vertex>,
@@ -451,6 +462,127 @@ impl Mesh {
         }
 
         Ok(face_id)
+    }
+
+    /// Extrudes one face by duplicating its vertices and adding a cap and side faces.
+    ///
+    /// The source face remains in place. The new cap keeps the source winding, and
+    /// each side is a quad. Existing UV layers are copied to the cap where source
+    /// coordinates exist; side UVs use a predictable world-unit rectangle (edge
+    /// length by extrusion distance). All numeric inputs and derived positions are
+    /// checked before topology is mutated.
+    pub fn extrude_face(
+        &mut self,
+        face_id: FaceId,
+        offset: [f32; 3],
+    ) -> Result<ExtrusionResult, MeshError> {
+        let source = self
+            .faces
+            .get(face_id.0 as usize)
+            .ok_or(MeshError::FaceNotFound(face_id))?
+            .vertices
+            .clone();
+        if !offset.iter().all(|value| value.is_finite()) {
+            return Err(MeshError::NonFinitePosition);
+        }
+
+        let mut new_positions = Vec::with_capacity(source.len());
+        for &vertex in &source {
+            let position = self
+                .vertex_position(vertex)
+                .ok_or(MeshError::InvalidVertex(vertex))?;
+            let translated = [
+                position[0] + offset[0],
+                position[1] + offset[1],
+                position[2] + offset[2],
+            ];
+            if !translated.iter().all(|value| value.is_finite()) {
+                return Err(MeshError::NonFinitePosition);
+            }
+            new_positions.push(translated);
+        }
+
+        let distance = (offset[0] * offset[0]
+            + offset[1] * offset[1]
+            + offset[2] * offset[2])
+            .sqrt();
+        if !distance.is_finite() {
+            return Err(MeshError::NonFinitePosition);
+        }
+        let mut edge_lengths = Vec::with_capacity(source.len());
+        for index in 0..source.len() {
+            let a = self.vertex_position(source[index]).ok_or(MeshError::InvalidVertex(source[index]))?;
+            let b = self.vertex_position(source[(index + 1) % source.len()])
+                .ok_or(MeshError::InvalidVertex(source[(index + 1) % source.len()]))?;
+            let dx = b[0] - a[0];
+            let dy = b[1] - a[1];
+            let dz = b[2] - a[2];
+            let length = (dx * dx + dy * dy + dz * dz).sqrt();
+            if !length.is_finite() {
+                return Err(MeshError::NonFinitePosition);
+            }
+            edge_lengths.push(length);
+        }
+
+        // All fallible numeric and ID checks are complete before mutation.
+        let uv_layers: Vec<String> = self.uv_layers.keys().cloned().collect();
+        let source_uvs: HashMap<String, Vec<Option<Uv>>> = uv_layers
+            .iter()
+            .map(|name| {
+                let layer = &self.uv_layers[name];
+                let values = (0..source.len())
+                    .map(|corner| layer.get(face_id, corner))
+                    .collect();
+                (name.clone(), values)
+            })
+            .collect();
+
+        let new_vertices: Vec<VertexId> = new_positions
+            .into_iter()
+            .map(|position| self.add_vertex(position))
+            .collect();
+        let top_face = self.add_face(&new_vertices)?;
+
+        for layer_name in &uv_layers {
+            if let Some(values) = source_uvs.get(layer_name) {
+                for (corner, uv) in values.iter().enumerate() {
+                    if let Some(uv) = uv {
+                        self.set_uv(layer_name, top_face, corner, *uv)?;
+                    }
+                }
+            }
+        }
+
+        let mut side_faces = Vec::with_capacity(source.len());
+        for index in 0..source.len() {
+            let next = (index + 1) % source.len();
+            let side = self.add_face(&[
+                source[index],
+                source[next],
+                new_vertices[next],
+                new_vertices[index],
+            ])?;
+            side_faces.push(side);
+
+            for layer_name in &uv_layers {
+                let length = edge_lengths[index];
+                let side_uvs = [
+                    Uv::new(0.0, 0.0),
+                    Uv::new(length, 0.0),
+                    Uv::new(length, distance),
+                    Uv::new(0.0, distance),
+                ];
+                for (corner, uv) in side_uvs.into_iter().enumerate() {
+                    self.set_uv(layer_name, side, corner, uv)?;
+                }
+            }
+        }
+
+        Ok(ExtrusionResult {
+            vertices: new_vertices,
+            top_face,
+            side_faces,
+        })
     }
 
     /// Deletes a face, removes orphaned edges, and rebuilds adjacency and UV corner keys.

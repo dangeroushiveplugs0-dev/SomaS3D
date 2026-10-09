@@ -141,3 +141,12 @@ The proposed merge ratios are optimization targets, not a guarantee that arbitra
 - Cube and plane primitives receive basic per-corner UV coordinates; UV spheres receive spherical per-corner coordinates with the longitudinal seam represented by UVs outside the 0–1 interval where needed. These are usable starting maps, not a substitute for a dedicated UV editor. Viewport-facing creation controls and explicit normal data remain follow-up work.
 - Procedural hair will use a separate editable-object representation rather than being forced into these ordinary closed-surface mesh builders.
 
+
+## Editable primitive objects
+
+- `PrimitiveObject` stores a caller-assigned stable object ID, a display name, the source `PrimitiveKind` parameters, the generated mesh, and a geometry revision.
+- Updating primitive parameters generates a candidate mesh before committing. Invalid dimensions or resolution leave the previous parameters, mesh, and revision untouched.
+- Identical parameter updates are no-ops; renaming does not regenerate geometry. The geometry revision increments only after successful parameter changes, so future viewport caches can identify stale mesh data.
+- The caller supplies `PrimitiveObjectId`; the future scene/document layer is responsible for allocating unique IDs and storing objects. This avoids global counters and keeps object identity deterministic in tests and serialized documents.
+- The mesh is exposed read-only through this object API to prevent parameter/mesh drift. Direct mesh editing remains available through the existing `Mesh` and `ModelingEditor` APIs; a future scene layer will define how an object transitions from parametric editing into ordinary topology editing.
+- This is a UI-independent data contract. It does not yet implement a scene graph, object transforms, primitive creation panels, viewport gizmos, persistence, or procedural hair.

@@ -14,32 +14,56 @@ fn with_scene<T>(operation: impl FnOnce(&mut Scene) -> Result<T, String>) -> Res
         let _ = scene.add_primitive("Cube", PrimitiveKind::Cube { size: 2.0 });
         Mutex::new(scene)
     });
-    let mut scene = mutex.lock().map_err(|_| "scene lock poisoned".to_owned())?;
+    let mut scene = mutex
+        .lock()
+        .map_err(|_| "scene lock poisoned".to_owned())?;
     operation(&mut scene)
 }
 
 fn snapshot_json() -> Result<String, String> {
     with_scene(|scene| {
-        let snapshot = scene.viewport_snapshot().map_err(|error| format!("snapshot failed: {error:?}"))?;
-        let mut json = format!(
-            "{{\"active\":{},\"meshes\":[",
-            snapshot.active_object.map(|id| id.0.to_string()).unwrap_or_else(|| "null".to_owned())
-        );
+        let snapshot = scene
+            .viewport_snapshot()
+            .map_err(|error| format!("snapshot failed: {error:?}"))?;
+        let active = snapshot
+            .active_object
+            .map(|id| id.0.to_string())
+            .unwrap_or_else(|| "null".to_owned());
+        let mut json = format!("{{\"active\":{active},\"meshes\":[");
         for (mesh_index, object) in snapshot.meshes.iter().enumerate() {
-            if mesh_index > 0 { json.push(','); }
-            write!(&mut json, "{{\"id\":{},\"name\":\"{}\",\"positions\":[", object.id.0, object.name.replace('"', "\\\""))
-                .map_err(|error| error.to_string())?;
-            for (index, position) in object.positions.iter().enumerate() {
-                if index > 0 { json.push(','); }
-                write!(&mut json, "[{:.6},{:.6},{:.6}]", position[0], position[1], position[2])
-                    .map_err(|error| error.to_string())?;
+            if mesh_index > 0 {
+                json.push(',');
             }
+            write!(
+                &mut json,
+                "{{\"id\":{},\"name\":\"{}\",\"positions\":[",
+                object.id.0,
+                object.name.replace('"', "\\\"")
+            )
+            .map_err(|error| error.to_string())?;
+
+            for (index, position) in object.positions.iter().enumerate() {
+                if index > 0 {
+                    json.push(',');
+                }
+                write!(
+                    &mut json,
+                    "[{:.6},{:.6},{:.6}]",
+                    position[0], position[1], position[2]
+                )
+                .map_err(|error| error.to_string())?;
+            }
+
             json.push_str("],\"polygons\":[");
             for (face_index, polygon) in object.polygons.iter().enumerate() {
-                if face_index > 0 { json.push(','); }
+                if face_index > 0 {
+                    json.push(',');
+                }
                 json.push('[');
                 for (index, vertex) in polygon.iter().enumerate() {
-                    if index > 0 { json.push(','); }
+                    if index > 0 {
+                        json.push(',');
+                    }
                     write!(&mut json, "{vertex}").map_err(|error| error.to_string())?;
                 }
                 json.push(']');
@@ -54,18 +78,29 @@ fn snapshot_json() -> Result<String, String> {
 fn add_primitive(kind: PrimitiveKind, label: &str) -> Result<i64, String> {
     with_scene(|scene| {
         let next_index = scene.objects().len() as f32;
-        let id = scene.add_primitive(label, kind).map_err(|error| format!("add primitive failed: {error:?}"))?;
+        let id = scene
+            .add_primitive(label, kind)
+            .map_err(|error| format!("add primitive failed: {error:?}"))?;
         let mut transform = Transform3D::default();
         transform.translation = [next_index * 2.8, 0.0, 0.0];
-        scene.object_mut(id).ok_or_else(|| "new object missing".to_owned())?.set_transform(transform);
+        scene
+            .object_mut(id)
+            .ok_or_else(|| "new object missing".to_owned())?
+            .set_transform(transform);
         Ok(id.0 as i64)
     })
 }
 
 #[no_mangle]
-pub extern "system" fn Java_com_soma3d_app_NativeGeometry_sceneJson(mut env: JNIEnv, _class: JClass) -> jstring {
-    let json = snapshot_json().unwrap_or_else(|error| format!("{{\"error\":\"{}\"}}", error.replace('"', "\\\"")));
-    env.new_string(json).map(|value| value.into_raw()).unwrap_or(std::ptr::null_mut())
+pub extern "system" fn Java_com_soma3d_app_NativeGeometry_sceneJson(
+    mut env: JNIEnv,
+    _class: JClass,
+) -> jstring {
+    let json = snapshot_json()
+        .unwrap_or_else(|error| format!("{{\"error\":\"{}\"}}", error.replace('"', "\\\"")));
+    env.new_string(json)
+        .map(|value| value.into_raw())
+        .unwrap_or(std::ptr::null_mut())
 }
 
 #[no_mangle]
@@ -130,6 +165,7 @@ mod tests {
                 .map(|_| ())
         })
         .unwrap();
+
         let json = snapshot_json().unwrap();
         assert!(json.contains("\"meshes\":["));
         assert!(json.contains("\"Test Cube\""));

@@ -523,6 +523,7 @@ mod tests {
         }
         assert_eq!(editor.state().mesh.face_count(), 33);
     }
+
     #[test]
     fn connected_edge_selection_scales_to_dense_grid_meshes_and_is_undoable() {
         let side = 40usize;
@@ -552,7 +553,10 @@ mod tests {
         assert!(mesh.validate_topology().is_empty());
 
         let mut editor = ModelingEditor::new(mesh, 4);
-        assert_eq!(editor.select_connected_edges(EdgeId(0)).unwrap(), expected_edges);
+        assert_eq!(
+            editor.select_connected_edges(EdgeId(0)).unwrap(),
+            expected_edges
+        );
         assert_eq!(editor.state().selection().edges().count(), expected_edges);
 
         assert!(editor.undo());
@@ -560,5 +564,4 @@ mod tests {
         assert!(editor.redo());
         assert_eq!(editor.state().selection().edges().count(), expected_edges);
     }
-
 }

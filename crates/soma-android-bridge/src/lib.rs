@@ -14,9 +14,7 @@ fn with_scene<T>(operation: impl FnOnce(&mut Scene) -> Result<T, String>) -> Res
         let _ = scene.add_primitive("Cube", PrimitiveKind::Cube { size: 2.0 });
         Mutex::new(scene)
     });
-    let mut scene = mutex
-        .lock()
-        .map_err(|_| "scene lock poisoned".to_owned())?;
+    let mut scene = mutex.lock().map_err(|_| "scene lock poisoned".to_owned())?;
     operation(&mut scene)
 }
 

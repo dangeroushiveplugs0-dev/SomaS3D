@@ -72,9 +72,8 @@ impl ViewportNavigation {
             return false;
         };
         let up = cross(right, forward);
-        let world_per_pixel =
-            2.0 * distance * (self.camera.vertical_fov_radians * 0.5).tan()
-                / viewport_height as f32;
+        let world_per_pixel = 2.0 * distance * (self.camera.vertical_fov_radians * 0.5).tan()
+            / viewport_height as f32;
         let shift = add(
             scale(right, -delta_x * world_per_pixel),
             scale(up, delta_y * world_per_pixel),
@@ -108,7 +107,11 @@ impl ViewportNavigation {
         aspect_ratio: f32,
         margin: f32,
     ) -> Result<(), ViewportCameraError> {
-        if !bounds.min.iter().chain(bounds.max.iter()).all(|v| v.is_finite())
+        if !bounds
+            .min
+            .iter()
+            .chain(bounds.max.iter())
+            .all(|v| v.is_finite())
             || !margin.is_finite()
             || margin < 1.0
         {
@@ -121,8 +124,8 @@ impl ViewportNavigation {
         let center = scale(add(bounds.min, bounds.max), 0.5);
         let extent = scale(subtract(bounds.max, bounds.min), 0.5);
         let radius = length(extent);
-        let direction = normalize(subtract(self.camera.eye, self.camera.target))
-            .unwrap_or([0.0, 0.0, 1.0]);
+        let direction =
+            normalize(subtract(self.camera.eye, self.camera.target)).unwrap_or([0.0, 0.0, 1.0]);
         let horizontal_fov =
             2.0 * ((self.camera.vertical_fov_radians * 0.5).tan() * aspect_ratio).atan();
         let limiting_fov = self.camera.vertical_fov_radians.min(horizontal_fov);
@@ -197,7 +200,9 @@ mod tests {
             ..ViewportNavigation::default()
         };
         assert!(navigation.zoom(1000.0));
-        assert!((length(subtract(navigation.camera.eye, navigation.camera.target)) - 1.0).abs() < 1e-4);
+        assert!(
+            (length(subtract(navigation.camera.eye, navigation.camera.target)) - 1.0).abs() < 1e-4
+        );
         assert!(!navigation.zoom(f32::NAN));
     }
 

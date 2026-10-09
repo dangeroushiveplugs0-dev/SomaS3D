@@ -256,3 +256,11 @@ SomaS3D should include a native **In-Space Studio** for drawing and placing grap
 5. Add mobile-friendly effect presets incrementally, profiling on-device before enabling expensive effects by default.
 
 This is a roadmap item, not a claim that spatial drawing, text, effects, or image export are implemented today.
+
+## Viewport draw-buffer preparation
+
+- `ViewportSceneSnapshot::draw_data()` now produces CPU-side mesh surface triangle indices, unique undirected edge indices, and hair-guide line-list positions.
+- Mesh and hair batches retain object IDs and names; mesh batches retain parametric status, and hair batches preserve RGBA color. This lets a future renderer upload buffers without reaching into mutable scene state.
+- Current fan triangulation is intended for the convex polygons produced by the primitive and extrusion APIs. A robust triangulator is still needed before arbitrary concave imported polygons can be rendered safely.
+- This is not yet a visible GPU viewport: camera controls, shaders, lighting, picking, selection highlighting, and platform UI remain future work.
+

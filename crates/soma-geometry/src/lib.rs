@@ -15,6 +15,7 @@ mod selection;
 mod topology;
 mod uv;
 mod viewport;
+mod viewport_draw;
 
 pub use document_editor::{DocumentEditError, SceneDocumentEditor};
 pub use editor::{EditorError, EditorState, ModelingEditor};
@@ -34,6 +35,7 @@ pub use topology::{
 };
 pub use uv::{Uv, UvCorner, UvError, UvIsland, UvLayer, UvTransform};
 pub use viewport::{ViewportMeshObject, ViewportSceneSnapshot};
+pub use viewport_draw::{ViewportDrawData, ViewportHairDrawData, ViewportMeshDrawData};
 
 #[cfg(test)]
 mod tests {

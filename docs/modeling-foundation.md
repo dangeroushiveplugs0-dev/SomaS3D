@@ -12,7 +12,9 @@ SomaS3D is being built as a modeling application first.
 6. Viewport rendering
 7. UV editor
 8. Texturing and material authoring
-9. Performance and stress testing
+9. Node-based shader/material editor
+10. Toon/cel shading and outline rendering
+11. Performance and stress testing
 
 The PBR material data model and semantic material evaluator are already part of the initial foundation. Rich texture image management and authoring tools remain downstream of stable topology and UV behavior.
 
@@ -160,3 +162,40 @@ The proposed merge ratios are optimization targets, not a guarantee that arbitra
 - The scene is a platform-independent document foundation, not a rendered viewport. Picking, hierarchy UI, transform gizmos, serialization, duplication, and scene-level undo/redo remain later integrations.
 
 - `SceneObject::evaluated_mesh` returns a transformed mesh copy for viewport/render consumers while leaving stored local-space geometry untouched. Invalid object transforms return an error instead of partially changing scene geometry.
+
+
+## Node-based shader editor roadmap
+
+SomaS3D should support a visual, node-based material editor inspired by Blender's Shader Editor. This is a planned authoring system, not an implemented UI yet.
+
+### Core graph design
+
+- Represent materials as a typed graph of nodes and sockets rather than a collection of hard-coded UI presets.
+- Start with output, constant/color, numeric value, texture sample, UV coordinates, basic math/mix, normal, and a physically based surface shader node.
+- Validate socket types and graph connections; reject cycles where the evaluation model cannot support them, missing required inputs, and invalid numeric values without corrupting the previous working material.
+- Keep graph data separate from the renderer so graphs can be saved, inspected, tested, and later compiled to the mobile GPU backend.
+- Provide a simple material-properties view and ready-made presets alongside the graph editor. Nodes should be optional for users who only want quick material controls.
+
+### Toon / cel shading target
+
+The supplied reference is a useful visual target: a stylized character with clean, deliberate light bands rather than photorealistic shading. A dedicated Toon/Cel Surface node should expose:
+
+- Base color and optional color texture
+- Shadow, midtone, and highlight colors or thresholds
+- Number of light bands and band softness
+- Shadow strength and ambient-light contribution
+- Optional rim-light color and intensity
+- Optional specular highlight controls
+
+The renderer will need a compatible lighting path to quantize diffuse lighting into stable bands. An outline is a separate rendering feature (for example, an inverted-hull or screen-space outline), so it should be an optional material/render setting rather than falsely treated as something a basic color node can provide. A practical first version should target predictable real-time mobile performance, then add more advanced nodes and effects after profiling on-device.
+
+### Suggested delivery order
+
+1. Define serializable node, socket, connection, and graph data types with stable IDs.
+2. Add graph validation and deterministic CPU-side evaluation for supported simple nodes.
+3. Implement a minimal graph-to-renderer compilation path and default PBR material compatibility.
+4. Add the Toon/Cel Surface node and light-band rendering.
+5. Add optional outline and rim-light support, then build the touch-friendly node canvas, searchable node menu, and material preview.
+6. Add texture nodes and advanced graph features incrementally, with mobile performance budgets and test coverage.
+
+The reference image is a shading goal, not a promise that the current geometry foundation already renders toon shading. The shader graph belongs after the scene/document and rendering interfaces are stable enough to consume it.

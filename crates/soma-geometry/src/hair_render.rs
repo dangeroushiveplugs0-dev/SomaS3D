@@ -147,5 +147,4 @@ mod tests {
             Err(SceneError::ObjectNotFound(ObjectId(999)))
         );
     }
-
 }

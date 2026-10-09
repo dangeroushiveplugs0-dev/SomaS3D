@@ -138,8 +138,14 @@ mod tests {
         assert_eq!(snapshot.meshes.len(), 1);
         assert_eq!(snapshot.hair.len(), 1);
         assert_eq!(snapshot.hair[0].object_id, hair_id);
-        assert_eq!(snapshot.hair[0].guides.len(), HairSettings::short_hair().amount);
-        assert_eq!(scene.object(source).unwrap().mesh().vertex_position(a), before);
+        assert_eq!(
+            snapshot.hair[0].guides.len(),
+            HairSettings::short_hair().amount
+        );
+        assert_eq!(
+            scene.object(source).unwrap().mesh().vertex_position(a),
+            before
+        );
     }
 
     #[test]

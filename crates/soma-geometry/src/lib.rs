@@ -157,7 +157,9 @@ mod tests {
         mesh.transform_uv_corners(
             "UVMap",
             &[UvCorner { face, corner: 1 }],
-            UvTransform::Translate { delta: [0.25, -0.5] },
+            UvTransform::Translate {
+                delta: [0.25, -0.5],
+            },
         )
         .unwrap();
 
@@ -174,13 +176,9 @@ mod tests {
         let b = mesh.add_vertex([1.0, 0.0, 0.0]);
         let c = mesh.add_vertex([0.0, 1.0, 0.0]);
         let face = mesh.add_face(&[a, b, c]).unwrap();
-        for (corner, uv) in [
-            Uv::new(0.0, 0.0),
-            Uv::new(1.0, 0.0),
-            Uv::new(0.0, 1.0),
-        ]
-        .into_iter()
-        .enumerate()
+        for (corner, uv) in [Uv::new(0.0, 0.0), Uv::new(1.0, 0.0), Uv::new(0.0, 1.0)]
+            .into_iter()
+            .enumerate()
         {
             mesh.set_uv("UVMap", face, corner, uv).unwrap();
         }

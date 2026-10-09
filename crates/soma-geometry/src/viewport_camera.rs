@@ -53,8 +53,16 @@ pub enum ViewportCameraError {
 
 impl ViewportCamera {
     /// Builds matrices for a positive viewport width/height aspect ratio.
-    pub fn matrices(self, aspect_ratio: f32) -> Result<ViewportCameraMatrices, ViewportCameraError> {
-        if !self.eye.iter().chain(self.target.iter()).chain(self.up.iter()).all(|v| v.is_finite())
+    pub fn matrices(
+        self,
+        aspect_ratio: f32,
+    ) -> Result<ViewportCameraMatrices, ViewportCameraError> {
+        if !self
+            .eye
+            .iter()
+            .chain(self.target.iter())
+            .chain(self.up.iter())
+            .all(|v| v.is_finite())
             || !self.vertical_fov_radians.is_finite()
             || !self.near_plane.is_finite()
             || !self.far_plane.is_finite()
@@ -73,14 +81,24 @@ impl ViewportCamera {
 
         let forward = normalize(sub(self.target, self.eye))
             .ok_or(ViewportCameraError::DegenerateViewDirection)?;
-        let right = normalize(cross(forward, self.up))
-            .ok_or(ViewportCameraError::DegenerateUpDirection)?;
+        let right =
+            normalize(cross(forward, self.up)).ok_or(ViewportCameraError::DegenerateUpDirection)?;
         let camera_up = cross(right, forward);
 
         let view = [
             [right[0], right[1], right[2], -dot(right, self.eye)],
-            [camera_up[0], camera_up[1], camera_up[2], -dot(camera_up, self.eye)],
-            [-forward[0], -forward[1], -forward[2], dot(forward, self.eye)],
+            [
+                camera_up[0],
+                camera_up[1],
+                camera_up[2],
+                -dot(camera_up, self.eye),
+            ],
+            [
+                -forward[0],
+                -forward[1],
+                -forward[2],
+                dot(forward, self.eye),
+            ],
             [0.0, 0.0, 0.0, 1.0],
         ];
 
@@ -89,12 +107,21 @@ impl ViewportCamera {
         let projection = [
             [f / aspect_ratio, 0.0, 0.0, 0.0],
             [0.0, f, 0.0, 0.0],
-            [0.0, 0.0, (self.far_plane + self.near_plane) * nf, 2.0 * self.far_plane * self.near_plane * nf],
+            [
+                0.0,
+                0.0,
+                (self.far_plane + self.near_plane) * nf,
+                2.0 * self.far_plane * self.near_plane * nf,
+            ],
             [0.0, 0.0, -1.0, 0.0],
         ];
         let view_projection = multiply(projection, view);
 
-        Ok(ViewportCameraMatrices { view, projection, view_projection })
+        Ok(ViewportCameraMatrices {
+            view,
+            projection,
+            view_projection,
+        })
     }
 }
 
@@ -212,6 +239,9 @@ mod tests {
 
     #[test]
     fn screen_conversion_rejects_empty_viewports() {
-        assert_eq!(ViewportCameraMatrices::ndc_to_screen([0.0, 0.0, 0.0], 0, 10), None);
+        assert_eq!(
+            ViewportCameraMatrices::ndc_to_screen([0.0, 0.0, 0.0], 0, 10),
+            None
+        );
     }
 }

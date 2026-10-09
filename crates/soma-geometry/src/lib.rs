@@ -9,7 +9,7 @@ mod uv;
 pub use material::{Material, MaterialSemantics, PbrMaterial};
 pub use material_eval::{evaluate, EvaluatedPbr};
 pub use selection::{Selection, SelectionMode};
-pub use topology::{CornerId, Edge, EdgeId, Face, FaceId, Mesh, MeshError, Vertex, VertexId};
+pub use topology::{CornerId, Edge, EdgeId, Face, FaceId, Mesh, MeshError, TopologyIssue, Vertex, VertexId};
 pub use uv::{Uv, UvCorner, UvError, UvIsland, UvLayer, UvTransform};
 
 #[cfg(test)]
@@ -197,4 +197,46 @@ mod tests {
         );
         assert_eq!(mesh.uv_layer("UVMap").unwrap().get(face, 0), before);
     }
+    #[test]
+    fn topology_validation_accepts_a_consistent_quad() {
+        let mut mesh = Mesh::new();
+        let a = mesh.add_vertex([0.0, 0.0, 0.0]);
+        let b = mesh.add_vertex([1.0, 0.0, 0.0]);
+        let c = mesh.add_vertex([1.0, 1.0, 0.0]);
+        let d = mesh.add_vertex([0.0, 1.0, 0.0]);
+        mesh.add_face(&[a, b, c, d]).unwrap();
+
+        assert!(mesh.validate_topology().is_empty());
+    }
+
+    #[test]
+    fn topology_validation_reports_non_finite_vertex_positions() {
+        let mut mesh = Mesh::new();
+        mesh.add_vertex([f32::NAN, 0.0, 0.0]);
+
+        assert_eq!(
+            mesh.validate_topology(),
+            vec![TopologyIssue::NonFiniteVertexPosition(VertexId(0))]
+        );
+    }
+
+    #[test]
+    fn topology_validation_reports_non_manifold_edges_without_hiding_them() {
+        let mut mesh = Mesh::new();
+        let a = mesh.add_vertex([0.0, 0.0, 0.0]);
+        let b = mesh.add_vertex([1.0, 0.0, 0.0]);
+        let c = mesh.add_vertex([0.0, 1.0, 0.0]);
+        let d = mesh.add_vertex([0.0, -1.0, 0.0]);
+        let e = mesh.add_vertex([0.0, 0.0, 1.0]);
+        mesh.add_face(&[a, b, c]).unwrap();
+        mesh.add_face(&[b, a, d]).unwrap();
+        mesh.add_face(&[a, b, e]).unwrap();
+
+        let shared = mesh.edge_between(a, b).unwrap();
+        assert!(mesh.validate_topology().contains(&TopologyIssue::NonManifoldEdge {
+            edge: shared,
+            incident_faces: 3,
+        }));
+    }
+
 }

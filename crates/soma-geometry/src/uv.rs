@@ -18,6 +18,53 @@ impl Uv {
     }
 }
 
+/// Non-destructive parameters for common UV editor transforms.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum UvTransform {
+    Translate { delta: [f32; 2] },
+    Scale { factor: [f32; 2], pivot: Uv },
+    Rotate { radians: f32, pivot: Uv },
+}
+
+impl UvTransform {
+    pub fn apply(self, uv: Uv) -> Result<Uv, UvError> {
+        let result = match self {
+            Self::Translate { delta } => {
+                if !delta.iter().all(|value| value.is_finite()) {
+                    return Err(UvError::NonFinite);
+                }
+                Uv::new(uv.u + delta[0], uv.v + delta[1])
+            }
+            Self::Scale { factor, pivot } => {
+                if !factor.iter().all(|value| value.is_finite()) || !pivot.is_finite() {
+                    return Err(UvError::NonFinite);
+                }
+                Uv::new(
+                    pivot.u + (uv.u - pivot.u) * factor[0],
+                    pivot.v + (uv.v - pivot.v) * factor[1],
+                )
+            }
+            Self::Rotate { radians, pivot } => {
+                if !radians.is_finite() || !pivot.is_finite() {
+                    return Err(UvError::NonFinite);
+                }
+                let (sin, cos) = radians.sin_cos();
+                let u = uv.u - pivot.u;
+                let v = uv.v - pivot.v;
+                Uv::new(
+                    pivot.u + u * cos - v * sin,
+                    pivot.v + u * sin + v * cos,
+                )
+            }
+        };
+        if result.is_finite() {
+            Ok(result)
+        } else {
+            Err(UvError::NonFinite)
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct UvCorner {
     pub face: FaceId,
@@ -116,8 +163,10 @@ mod transform_tests {
     #[test]
     fn invalid_transform_parameters_are_rejected() {
         assert_eq!(
-            UvTransform::Translate { delta: [f32::INFINITY, 0.0] }
-                .apply(Uv::new(0.0, 0.0)),
+            UvTransform::Translate {
+                delta: [f32::INFINITY, 0.0],
+            }
+            .apply(Uv::new(0.0, 0.0)),
             Err(UvError::NonFinite)
         );
     }

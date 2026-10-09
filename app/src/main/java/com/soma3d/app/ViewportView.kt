@@ -9,12 +9,14 @@ import android.view.MotionEvent
 import android.view.View
 import kotlin.math.*
 
-/** Interactive Android viewport prototype. The Rust scene renderer is integrated in a later milestone. */
+/** Canvas viewport using the Rust scene snapshot when the native bridge is available. */
 class ViewportView(context: Context) : View(context) {
     private data class V3(val x: Float, val y: Float, val z: Float)
     private data class P2(val x: Float, val y: Float, val depth: Float)
+    private data class Face(val indices: IntArray, val color: Int, val depth: Double, val points: List<P2>)
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val mesh = NativeGeometry.loadDefaultMesh() ?: fallbackMesh()
     private var yaw = -0.65f
     private var pitch = 0.42f
     private var zoom = 1f
@@ -42,12 +44,13 @@ class ViewportView(context: Context) : View(context) {
         val focal = min(width, height) * 0.92f * zoom
         if (showGrid) drawGrid(canvas, cx, cy, focal)
         drawAxes(canvas, cx, cy, focal)
-        drawCube(canvas, cx, cy, focal)
+        drawMesh(canvas, cx, cy, focal)
         drawGizmo(canvas)
         paint.style = Paint.Style.FILL
         paint.color = Color.rgb(196, 205, 219)
         paint.textSize = dp(11f)
-        canvas.drawText("Cube  |  Object Mode", dp(16f), height - dp(62f), paint)
+        val source = if (mesh.fromRust) "Rust Scene" else "Preview Mesh"
+        canvas.drawText("${mesh.name}  |  ${source}", dp(16f), height - dp(62f), paint)
     }
 
     private fun rotate(v: V3): V3 {
@@ -94,33 +97,28 @@ class ViewportView(context: Context) : View(context) {
         canvas.drawLine(pa.x, pa.y, pb.x, pb.y, paint)
     }
 
-    private fun drawCube(canvas: Canvas, cx: Float, cy: Float, focal: Float) {
-        val vertices = listOf(
-            V3(-1f, -1f, -1f), V3(1f, -1f, -1f), V3(1f, 1f, -1f), V3(-1f, 1f, -1f),
-            V3(-1f, -1f, 1f), V3(1f, -1f, 1f), V3(1f, 1f, 1f), V3(-1f, 1f, 1f)
-        )
-        val faces = listOf(
-            intArrayOf(0, 1, 2, 3) to Color.rgb(65, 111, 173),
-            intArrayOf(4, 7, 6, 5) to Color.rgb(87, 143, 210),
-            intArrayOf(0, 4, 5, 1) to Color.rgb(48, 83, 128),
-            intArrayOf(3, 2, 6, 7) to Color.rgb(100, 158, 221),
-            intArrayOf(0, 3, 7, 4) to Color.rgb(55, 95, 148),
-            intArrayOf(1, 5, 6, 2) to Color.rgb(76, 128, 191)
-        )
+    private fun drawMesh(canvas: Canvas, cx: Float, cy: Float, focal: Float) {
+        val vertices = mesh.vertices.map { V3(it[0], it[1], it[2]) }
         val projected = vertices.map { project(it, cx, cy, focal) }
-        val ordered = faces.mapNotNull { face ->
-            val points = face.first.map { index -> projected[index] ?: return@mapNotNull null }
-            Triple(points.map { it.depth }.average(), face, points)
-        }.sortedByDescending { it.first }
+        val colors = intArrayOf(
+            Color.rgb(65, 111, 173), Color.rgb(87, 143, 210),
+            Color.rgb(48, 83, 128), Color.rgb(100, 158, 221),
+            Color.rgb(55, 95, 148), Color.rgb(76, 128, 191)
+        )
+        val faces = mesh.polygons.mapIndexedNotNull { index, polygon ->
+            if (polygon.size < 3 || polygon.any { it !in projected.indices }) return@mapIndexedNotNull null
+            val points = polygon.map { vertexIndex -> projected[vertexIndex] ?: return@mapIndexedNotNull null }
+            Face(polygon, colors[index % colors.size], points.map { it.depth }.average(), points)
+        }.sortedByDescending { it.depth }
 
-        for ((_, face, points) in ordered) {
+        for (face in faces) {
             val path = Path().apply {
-                moveTo(points[0].x, points[0].y)
-                for (i in 1 until points.size) lineTo(points[i].x, points[i].y)
+                moveTo(face.points[0].x, face.points[0].y)
+                for (i in 1 until face.points.size) lineTo(face.points[i].x, face.points[i].y)
                 close()
             }
             paint.style = Paint.Style.FILL
-            paint.color = face.second
+            paint.color = face.color
             canvas.drawPath(path, paint)
             if (showEdges) {
                 paint.style = Paint.Style.STROKE
@@ -203,6 +201,22 @@ class ViewportView(context: Context) : View(context) {
         if (event.pointerCount < 2) return 0f
         return hypot(event.getX(0) - event.getX(1), event.getY(0) - event.getY(1))
     }
+
+    private fun fallbackMesh() = ViewportMeshData(
+        name = "Cube",
+        vertices = listOf(
+            floatArrayOf(-1f, -1f, -1f), floatArrayOf(1f, -1f, -1f),
+            floatArrayOf(1f, 1f, -1f), floatArrayOf(-1f, 1f, -1f),
+            floatArrayOf(-1f, -1f, 1f), floatArrayOf(1f, -1f, 1f),
+            floatArrayOf(1f, 1f, 1f), floatArrayOf(-1f, 1f, 1f)
+        ),
+        polygons = listOf(
+            intArrayOf(0, 1, 2, 3), intArrayOf(4, 7, 6, 5),
+            intArrayOf(0, 4, 5, 1), intArrayOf(3, 2, 6, 7),
+            intArrayOf(0, 3, 7, 4), intArrayOf(1, 5, 6, 2)
+        ),
+        fromRust = false
+    )
 
     private fun dp(value: Float): Float = value * resources.displayMetrics.density
 }

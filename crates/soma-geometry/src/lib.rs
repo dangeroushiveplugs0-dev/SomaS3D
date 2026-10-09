@@ -14,6 +14,7 @@ mod scene_editor;
 mod selection;
 mod topology;
 mod uv;
+mod viewport;
 
 pub use document_editor::{DocumentEditError, SceneDocumentEditor};
 pub use editor::{EditorError, EditorState, ModelingEditor};
@@ -32,6 +33,7 @@ pub use topology::{
     TopologyRemap, Transform3D, Vertex, VertexId,
 };
 pub use uv::{Uv, UvCorner, UvError, UvIsland, UvLayer, UvTransform};
+pub use viewport::{ViewportMeshObject, ViewportSceneSnapshot};
 
 #[cfg(test)]
 mod tests {

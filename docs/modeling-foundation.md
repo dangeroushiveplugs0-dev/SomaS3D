@@ -18,6 +18,8 @@ The PBR material data model and semantic material evaluator are already part of 
 
 ## Topology and UV rules
 
+- `Mesh::validate_topology` reports invalid vertex positions, broken edge/face references, missing edges, duplicate edges, and non-manifold edges without silently repairing user data. Non-manifold edges are diagnostics, not automatically treated as fatal corruption.
+
 - UV coordinates are stored per face corner, not per shared vertex. A 3D vertex may have different UV coordinates on different faces at a seam.
 - Edges track incident faces and an explicit seam flag.
 - UV islands are connected components across manifold edges only when the edge is not marked as a seam and both endpoint UVs agree within a small tolerance.

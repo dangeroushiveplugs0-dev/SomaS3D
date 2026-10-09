@@ -4,6 +4,7 @@ mod editor;
 mod history;
 mod material;
 mod material_eval;
+mod primitives;
 mod selection;
 mod topology;
 mod uv;
@@ -12,6 +13,7 @@ pub use editor::{EditorError, EditorState, ModelingEditor};
 pub use history::EditHistory;
 pub use material::{Material, MaterialSemantics, PbrMaterial};
 pub use material_eval::{evaluate, EvaluatedPbr};
+pub use primitives::{generate_primitive, PrimitiveError, PrimitiveKind};
 pub use selection::{Selection, SelectionMode};
 pub use topology::{
     CornerId, Edge, EdgeId, ExtrusionResult, Face, FaceId, Mesh, MeshError, TopologyIssue,

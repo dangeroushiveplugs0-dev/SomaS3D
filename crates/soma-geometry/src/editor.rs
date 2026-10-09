@@ -116,6 +116,8 @@ impl ModelingEditor {
         if self.state().mesh.face(seed).is_none() {
             return Err(MeshError::FaceNotFound(seed).into());
         }
+        let mut selected_count = 0;
+        let mut selected_count = 0;
         self.history.apply(|state| {
             let mut visited = HashSet::new();
             let mut queue = VecDeque::from([seed]);
@@ -145,8 +147,10 @@ impl ModelingEditor {
             for face in &visited {
                 state.selection.select_face(*face);
             }
-            Ok(visited.len())
-        })
+            selected_count = visited.len();
+            Ok(())
+        })?;
+        Ok(selected_count)
     }
 
     /// Selects the edge component connected to `seed` through shared vertices.
@@ -182,8 +186,10 @@ impl ModelingEditor {
             for edge in &visited {
                 state.selection.select_edge(*edge);
             }
-            Ok(visited.len())
-        })
+            selected_count = visited.len();
+            Ok(())
+        })?;
+        Ok(selected_count)
     }
 
     /// Applies move/rotate/scale to the selected vertices as one undoable edit.

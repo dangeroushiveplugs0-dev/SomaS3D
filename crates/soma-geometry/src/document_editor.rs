@@ -221,7 +221,15 @@ mod tests {
         );
         assert!(document.redo());
         assert!(!document.scene().object(id).unwrap().is_parametric());
-        assert_ne!(document.scene().object(id).unwrap().mesh().vertex_position(crate::VertexId(0)), original_position);
+        assert_ne!(
+            document
+                .scene()
+                .object(id)
+                .unwrap()
+                .mesh()
+                .vertex_position(crate::VertexId(0)),
+            original_position
+        );
     }
 
     #[test]
@@ -230,14 +238,27 @@ mod tests {
         let id = document.add_primitive("Cube", PrimitiveKind::Cube { size: 1.0 }).unwrap();
         document.rename_object(id, "Hero").unwrap();
         assert!(document.undo());
-        let before = document.scene().object(id).unwrap().mesh().vertex_position(crate::VertexId(0));
+        let before = document
+            .scene()
+            .object(id)
+            .unwrap()
+            .mesh()
+            .vertex_position(crate::VertexId(0));
 
         assert!(document
             .edit_mesh(id, |mesh| {
                 mesh.translate_vertices(&[crate::VertexId(999)], [1.0, 0.0, 0.0])
             })
             .is_err());
-        assert_eq!(document.scene().object(id).unwrap().mesh().vertex_position(crate::VertexId(0)), before);
+        assert_eq!(
+            document
+                .scene()
+                .object(id)
+                .unwrap()
+                .mesh()
+                .vertex_position(crate::VertexId(0)),
+            before
+        );
         assert!(document.can_redo());
         assert!(document.scene().object(id).unwrap().is_parametric());
     }

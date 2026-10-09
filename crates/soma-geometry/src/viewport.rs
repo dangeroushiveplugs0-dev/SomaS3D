@@ -92,7 +92,7 @@ mod tests {
     #[test]
     fn snapshot_contains_world_space_mesh_positions_and_polygon_indices() {
         let mut scene = Scene::new();
-        let object_id = scene.add_primitive("Cube", PrimitiveKind::Cube).unwrap();
+        let object_id = scene.add_primitive("Cube", PrimitiveKind::Cube { size: 1.0 }).unwrap();
         scene
             .object_mut(object_id)
             .unwrap()
@@ -151,7 +151,7 @@ mod tests {
     #[test]
     fn snapshot_fails_atomically_when_an_object_transform_is_invalid() {
         let mut scene = Scene::new();
-        let id = scene.add_primitive("Cube", PrimitiveKind::Cube).unwrap();
+        let id = scene.add_primitive("Cube", PrimitiveKind::Cube { size: 1.0 }).unwrap();
         scene.object_mut(id).unwrap().set_transform(Transform3D {
             scale: [f32::NAN, 1.0, 1.0],
             ..Transform3D::default()

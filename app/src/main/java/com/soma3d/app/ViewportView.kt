@@ -62,9 +62,8 @@ class ViewportView(context: Context) : View(context) {
         val focal = min(width, height) * 0.92f * zoom
         if (showGrid) drawGrid(canvas, cx, cy, focal)
         drawAxes(canvas, cx, cy, focal)
-        val selectableFaces = mutableListOf<ProjectedFace>()
         scene.meshes.forEachIndexed { index, mesh ->
-            drawMesh(canvas, mesh, index, cx, cy, focal, selectableFaces)
+            drawMesh(canvas, mesh, index, cx, cy, focal)
         }
         drawGizmo(canvas)
         paint.style = Paint.Style.FILL
@@ -125,8 +124,7 @@ class ViewportView(context: Context) : View(context) {
         meshIndex: Int,
         cx: Float,
         cy: Float,
-        focal: Float,
-        selectableFaces: MutableList<ProjectedFace>
+        focal: Float
     ) {
         val projected = mesh.vertices.map { project(V3(it[0], it[1], it[2]), cx, cy, focal) }
         val baseColors = intArrayOf(
@@ -135,12 +133,11 @@ class ViewportView(context: Context) : View(context) {
             Color.rgb(55, 95, 148), Color.rgb(76, 128, 191)
         )
         val isActive = mesh.id == scene.activeObjectId
-        val faces = mesh.polygons.mapNotNull { polygon ->
-            if (polygon.size < 3 || polygon.any { it !in projected.indices }) return@mapNotNull null
-            val points = polygon.map { vertexIndex -> projected[vertexIndex] ?: return@mapNotNull null }
+        val faces = mesh.polygons.mapIndexedNotNull { faceIndex, polygon ->
+            if (polygon.size < 3 || polygon.any { it !in projected.indices }) return@mapIndexedNotNull null
+            val points = polygon.map { vertexIndex -> projected[vertexIndex] ?: return@mapIndexedNotNull null }
             val depth = points.map { it.depth }.average().toFloat()
-            selectableFaces.add(ProjectedFace(mesh.id, depth, points))
-            Triple(depth, baseColors[(meshIndex + selectableFaces.size - 1) % baseColors.size], points)
+            Triple(depth, baseColors[(meshIndex + faceIndex) % baseColors.size], points)
         }.sortedByDescending { it.first }
 
         for ((_, faceColor, points) in faces) {
@@ -196,11 +193,12 @@ class ViewportView(context: Context) : View(context) {
         val cy = height * 0.53f
         val focal = min(width, height) * 0.92f * zoom
         val hits = mutableListOf<ProjectedFace>()
-        scene.meshes.forEach { mesh ->
+        for (mesh in scene.meshes) {
             val projected = mesh.vertices.map { project(V3(it[0], it[1], it[2]), cx, cy, focal) }
-            mesh.polygons.forEach { polygon ->
-                if (polygon.size < 3 || polygon.any { it !in projected.indices }) return@forEach
-                val points = polygon.map { projected[it] ?: return@forEach }
+            for (polygon in mesh.polygons) {
+                if (polygon.size < 3 || polygon.any { it !in projected.indices }) continue
+                val points = polygon.mapNotNull { projected[it] }
+                if (points.size != polygon.size) continue
                 if (pointInPolygon(x, y, points)) {
                     hits.add(ProjectedFace(mesh.id, points.map { it.depth }.average().toFloat(), points))
                 }

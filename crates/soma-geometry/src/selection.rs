@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use crate::{EdgeId, FaceId, VertexId};
+use crate::{EdgeId, FaceId, TopologyRemap, VertexId};
 
 /// The active component domain for the modeling viewport.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -108,6 +108,29 @@ impl Selection {
         toggle(&mut self.faces, id);
     }
 
+    /// Applies a topology operation's ID remap to selected edges and faces.
+    ///
+    /// Deleted components are dropped. Vertex IDs are unchanged by face deletion.
+    pub fn apply_topology_remap(
+        &mut self,
+        remap: &TopologyRemap,
+        edge_count: usize,
+        face_count: usize,
+    ) {
+        self.edges = self
+            .edges
+            .iter()
+            .filter_map(|id| remap.edges.get(id).copied())
+            .filter(|id| (id.0 as usize) < edge_count)
+            .collect();
+        self.faces = self
+            .faces
+            .iter()
+            .filter_map(|id| remap.faces.get(id).copied())
+            .filter(|id| (id.0 as usize) < face_count)
+            .collect();
+    }
+
     /// Removes stale IDs after topology changes without changing the active mode.
     pub fn retain_valid(&mut self, vertex_count: usize, edge_count: usize, face_count: usize) {
         self.vertices.retain(|id| (id.0 as usize) < vertex_count);
@@ -133,6 +156,31 @@ mod tests {
         selection.toggle_vertex(VertexId(1));
         selection.toggle_vertex(VertexId(2));
         assert_eq!(selection.vertices().collect::<Vec<_>>(), vec![VertexId(1)]);
+    }
+
+    #[test]
+    fn topology_remap_moves_surviving_selection_and_drops_deleted_face() {
+        use std::collections::HashMap;
+
+        let mut selection = Selection::default();
+        selection.select_face(FaceId(0));
+        selection.select_face(FaceId(1));
+        selection.select_edge(EdgeId(0));
+        selection.select_edge(EdgeId(3));
+        selection.select_vertex(VertexId(2));
+
+        let remap = TopologyRemap {
+            faces: HashMap::from([(FaceId(1), FaceId(0))]),
+            edges: HashMap::from([(EdgeId(0), EdgeId(0)), (EdgeId(3), EdgeId(2))]),
+        };
+        selection.apply_topology_remap(&remap, 3, 1);
+
+        assert_eq!(selection.faces().collect::<Vec<_>>(), vec![FaceId(0)]);
+        assert_eq!(
+            selection.edges().collect::<Vec<_>>(),
+            vec![EdgeId(0), EdgeId(2)]
+        );
+        assert_eq!(selection.vertices().collect::<Vec<_>>(), vec![VertexId(2)]);
     }
 
     #[test]

@@ -89,7 +89,12 @@ impl ViewportDrawData {
                     let Some(&c) = mesh.positions.get(triangle[2] as usize) else {
                         continue;
                     };
-                    if !a.iter().chain(b.iter()).chain(c.iter()).all(|v| v.is_finite()) {
+                    if !a
+                        .iter()
+                        .chain(b.iter())
+                        .chain(c.iter())
+                        .all(|v| v.is_finite())
+                    {
                         continue;
                     }
                     let Some(pa) = project(&matrices, a, width, height) else {
@@ -103,7 +108,10 @@ impl ViewportDrawData {
                     };
                     let normal = normalize(cross(subtract(b, a), subtract(c, a)));
                     let light = normal
-                        .map(|n| (dot(n, normalize([-0.35, 0.8, 0.5]).unwrap()).abs() * 0.72 + 0.22).clamp(0.0, 1.0))
+                        .map(|n| {
+                            (dot(n, normalize([-0.35, 0.8, 0.5]).unwrap()).abs() * 0.72 + 0.22)
+                                .clamp(0.0, 1.0)
+                        })
                         .unwrap_or(0.25);
                     let base = if self.active_object == Some(mesh.object_id) {
                         [204_u8, 139, 91]
@@ -193,10 +201,30 @@ fn raster_triangle(
     if !area.is_finite() || area.abs() <= f32::EPSILON {
         return;
     }
-    let min_x = points.iter().map(|p| p[0].floor() as i32).min().unwrap().max(0);
-    let max_x = points.iter().map(|p| p[0].ceil() as i32).max().unwrap().min(frame.width as i32 - 1);
-    let min_y = points.iter().map(|p| p[1].floor() as i32).min().unwrap().max(0);
-    let max_y = points.iter().map(|p| p[1].ceil() as i32).max().unwrap().min(frame.height as i32 - 1);
+    let min_x = points
+        .iter()
+        .map(|p| p[0].floor() as i32)
+        .min()
+        .unwrap()
+        .max(0);
+    let max_x = points
+        .iter()
+        .map(|p| p[0].ceil() as i32)
+        .max()
+        .unwrap()
+        .min(frame.width as i32 - 1);
+    let min_y = points
+        .iter()
+        .map(|p| p[1].floor() as i32)
+        .min()
+        .unwrap()
+        .max(0);
+    let max_y = points
+        .iter()
+        .map(|p| p[1].ceil() as i32)
+        .max()
+        .unwrap()
+        .min(frame.height as i32 - 1);
     if min_x > max_x || min_y > max_y {
         return;
     }
@@ -306,11 +334,19 @@ mod tests {
             .unwrap();
         let draw = scene.viewport_snapshot().unwrap().draw_data();
         let frame = draw
-            .render_cpu(ViewportCamera::default(), 96, 64, ViewportRenderSettings::default())
+            .render_cpu(
+                ViewportCamera::default(),
+                96,
+                64,
+                ViewportRenderSettings::default(),
+            )
             .unwrap();
 
         assert_eq!(frame.rgba.len(), 96 * 64 * 4);
-        assert!(frame.rgba.chunks_exact(4).any(|pixel| pixel[..3] != [29, 32, 38]));
+        assert!(frame
+            .rgba
+            .chunks_exact(4)
+            .any(|pixel| pixel[..3] != [29, 32, 38]));
         assert!(frame.rgba.chunks_exact(4).all(|pixel| pixel[3] == 255));
     }
 
@@ -322,11 +358,21 @@ mod tests {
             hair: Vec::new(),
         };
         assert_eq!(
-            draw.render_cpu(ViewportCamera::default(), 0, 64, ViewportRenderSettings::default()),
+            draw.render_cpu(
+                ViewportCamera::default(),
+                0,
+                64,
+                ViewportRenderSettings::default()
+            ),
             Err(ViewportRenderError::EmptyViewport)
         );
         assert_eq!(
-            draw.render_cpu(ViewportCamera::default(), 5000, 5000, ViewportRenderSettings::default()),
+            draw.render_cpu(
+                ViewportCamera::default(),
+                5000,
+                5000,
+                ViewportRenderSettings::default()
+            ),
             Err(ViewportRenderError::ViewportTooLarge)
         );
     }

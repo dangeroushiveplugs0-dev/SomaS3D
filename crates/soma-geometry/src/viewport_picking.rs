@@ -87,7 +87,12 @@ impl ViewportDrawData {
                 let Some(&c) = mesh.positions.get(triangle[2] as usize) else {
                     continue;
                 };
-                if !a.iter().chain(b.iter()).chain(c.iter()).all(|v| v.is_finite()) {
+                if !a
+                    .iter()
+                    .chain(b.iter())
+                    .chain(c.iter())
+                    .all(|v| v.is_finite())
+                {
                     continue;
                 }
                 let Some((distance, barycentric)) = intersect_triangle(ray, a, b, c) else {
@@ -144,7 +149,9 @@ fn unproject(inverse: [[f32; 4]; 4], ndc: [f32; 3]) -> Option<[f32; 3]> {
     let input = [ndc[0], ndc[1], ndc[2], 1.0];
     let mut output = [0.0; 4];
     for row in 0..4 {
-        output[row] = (0..4).map(|column| inverse[row][column] * input[column]).sum();
+        output[row] = (0..4)
+            .map(|column| inverse[row][column] * input[column])
+            .sum();
     }
     if !output.iter().all(|v| v.is_finite()) || output[3].abs() <= f32::EPSILON {
         return None;
@@ -277,10 +284,13 @@ mod tests {
         let far_id = scene
             .add_primitive("Far", PrimitiveKind::Cube { size: 1.0 })
             .unwrap();
-        scene.object_mut(far_id).unwrap().set_transform(crate::Transform3D {
-            translation: [0.0, 0.0, -2.0],
-            ..crate::Transform3D::default()
-        });
+        scene
+            .object_mut(far_id)
+            .unwrap()
+            .set_transform(crate::Transform3D {
+                translation: [0.0, 0.0, -2.0],
+                ..crate::Transform3D::default()
+            });
         let near_id = scene
             .add_primitive("Near", PrimitiveKind::Cube { size: 1.0 })
             .unwrap();

@@ -150,3 +150,11 @@ The proposed merge ratios are optimization targets, not a guarantee that arbitra
 - The caller supplies `PrimitiveObjectId`; the future scene/document layer is responsible for allocating unique IDs and storing objects. This avoids global counters and keeps object identity deterministic in tests and serialized documents.
 - The mesh is exposed read-only through this object API to prevent parameter/mesh drift. Direct mesh editing remains available through the existing `Mesh` and `ModelingEditor` APIs; a future scene layer will define how an object transitions from parametric editing into ordinary topology editing.
 - This is a UI-independent data contract. It does not yet implement a scene graph, object transforms, primitive creation panels, viewport gizmos, persistence, or procedural hair.
+
+## Scene and object layer
+
+- `Scene` owns a list of scene objects, allocates monotonically increasing object IDs, and tracks the active object. Removing the active object clears active state; IDs are not reused.
+- Each `SceneObject` stores local-space geometry separately from its `Transform3D`, keeping object transforms independent from component-level mesh edits.
+- Scene primitives retain their `PrimitiveKind` and geometry revision. Parameter updates generate a replacement mesh before committing and preserve object identity and object transform.
+- `make_editable_mesh` converts a parametric primitive into ordinary mesh geometry without changing its current geometry, object ID, name, or transform. Subsequent parameter updates are rejected rather than silently overwriting direct topology work.
+- The scene is a platform-independent document foundation, not a rendered viewport. Picking, hierarchy UI, transform gizmos, serialization, duplication, and scene-level undo/redo remain later integrations.

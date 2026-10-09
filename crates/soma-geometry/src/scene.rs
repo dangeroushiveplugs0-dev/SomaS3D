@@ -5,7 +5,9 @@
 //! the future viewport. Parametric objects can be edited until topology
 //! editing explicitly converts them to ordinary mesh objects.
 
-use crate::{generate_primitive, Mesh, MeshError, PrimitiveError, PrimitiveKind, Transform3D, VertexId};
+use crate::{
+    generate_primitive, Mesh, MeshError, PrimitiveError, PrimitiveKind, Transform3D, VertexId,
+};
 
 /// Stable identity assigned by a scene. IDs are never reused within a scene.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -363,9 +365,20 @@ mod tests {
         let evaluated = scene.object(id).unwrap().evaluated_mesh().unwrap();
         assert_eq!(
             evaluated.vertex_position(VertexId(0)),
-            Some([local_before[0] + 3.0, local_before[1] - 2.0, local_before[2] + 5.0])
+            Some([
+                local_before[0] + 3.0,
+                local_before[1] - 2.0,
+                local_before[2] + 5.0,
+            ])
         );
-        assert_eq!(scene.object(id).unwrap().mesh().vertex_position(VertexId(0)), Some(local_before));
+        assert_eq!(
+            scene
+                .object(id)
+                .unwrap()
+                .mesh()
+                .vertex_position(VertexId(0)),
+            Some(local_before)
+        );
         assert!(evaluated.validate_topology().is_empty());
     }
 
@@ -383,7 +396,14 @@ mod tests {
             scene.object(id).unwrap().evaluated_mesh(),
             Err(SceneError::Mesh(MeshError::NonFinitePosition))
         );
-        assert_eq!(scene.object(id).unwrap().mesh().vertex_position(VertexId(0)), Some([-0.5, -0.5, -0.5]));
+        assert_eq!(
+            scene
+                .object(id)
+                .unwrap()
+                .mesh()
+                .vertex_position(VertexId(0)),
+            Some([-0.5, -0.5, -0.5])
+        );
     }
 
     #[test]

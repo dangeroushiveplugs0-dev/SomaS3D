@@ -3,7 +3,10 @@
 //! Each successful command records a complete scene snapshot, so object creation,
 //! deletion, renaming, transforms, and primitive updates share one history.
 
-use crate::{EditHistory, ObjectId, PrimitiveKind, Scene, SceneError, SceneObject, Transform3D};
+use crate::{
+    EditHistory, FaceId, HairPreset, HairSettings, ObjectId, PrimitiveKind, Scene, SceneError,
+    SceneObject, Transform3D,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DocumentEditError {
@@ -61,6 +64,43 @@ impl SceneDocumentEditor {
             Ok::<_, SceneError>(())
         })?;
         Ok(created.expect("successful primitive creation returns an object ID"))
+    }
+
+    pub fn add_hair_object(
+        &mut self,
+        name: impl Into<String>,
+        source_object: ObjectId,
+        selected_faces: &[FaceId],
+        preset: HairPreset,
+        settings: HairSettings,
+    ) -> Result<ObjectId, DocumentEditError> {
+        let name = name.into();
+        let mut created = None;
+        self.history.apply(|scene| {
+            created = Some(scene.add_hair_object(
+                name,
+                source_object,
+                selected_faces,
+                preset,
+                settings,
+            )?);
+            Ok::<_, SceneError>(())
+        })?;
+        Ok(created.expect("successful hair creation returns an object ID"))
+    }
+
+    pub fn restyle_hair(
+        &mut self,
+        id: ObjectId,
+        settings: HairSettings,
+    ) -> Result<(), DocumentEditError> {
+        self.history.apply(|scene| scene.restyle_hair(id, settings))?;
+        Ok(())
+    }
+
+    pub fn remove_hair_object(&mut self, id: ObjectId) -> Result<(), DocumentEditError> {
+        self.history.apply(|scene| scene.remove_hair_object(id).map(|_| ()))?;
+        Ok(())
     }
 
     pub fn remove_object(&mut self, id: ObjectId) -> Result<SceneObject, DocumentEditError> {

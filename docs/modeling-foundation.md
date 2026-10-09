@@ -73,3 +73,10 @@ Only after the core passes these tests should character, physics, FEM, or advanc
 - The cap copies available per-corner UV coordinates from the source face. Side UVs use a predictable world-unit rectangle (source-edge length by extrusion distance); this is a starting policy for later interactive UV refinement, not automatic unwrap.
 - Non-finite offsets, overflowed positions, invalid face IDs, and non-finite derived lengths are rejected before topology changes.
 - This is a core mesh operation; interactive extrusion handles, live preview, and undo/redo are still future layers.
+
+## Undo and redo foundation
+
+- `EditHistory<T>` provides bounded snapshot-based undo/redo for cloneable editor state. It can hold a combined state containing the mesh and selection so they can be restored together.
+- Edits run against a cloned candidate and commit only when the operation returns success. Failed edits leave current state and both history stacks untouched; a successful new edit clears redo history.
+- The history limit bounds the number of snapshots, and a zero limit disables undo storage while still applying edits.
+- This is the correctness-first foundation. Large meshes may make full snapshots expensive, so operation-specific deltas or copy-on-write storage should be introduced after measuring actual workloads. Viewport input, drag previews, and app-level persistence still need integration.

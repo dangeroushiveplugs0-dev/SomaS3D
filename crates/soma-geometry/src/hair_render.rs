@@ -84,10 +84,13 @@ mod tests {
         let local_before = scene.hair_object(hair_id).unwrap().hair().guides()[0]
             .points
             .clone();
-        scene.object_mut(source).unwrap().set_transform(Transform3D {
-            translation: [3.0, -2.0, 5.0],
-            ..Transform3D::default()
-        });
+        scene
+            .object_mut(source)
+            .unwrap()
+            .set_transform(Transform3D {
+                translation: [3.0, -2.0, 5.0],
+                ..Transform3D::default()
+            });
 
         let evaluated = scene.evaluated_hair_guides(hair_id).unwrap();
 
@@ -97,7 +100,11 @@ mod tests {
         assert_eq!(evaluated.guides[0].len(), local_before.len());
         assert_eq!(
             evaluated.guides[0][0],
-            [local_before[0][0] + 3.0, local_before[0][1] - 2.0, local_before[0][2] + 5.0]
+            [
+                local_before[0][0] + 3.0,
+                local_before[0][1] - 2.0,
+                local_before[0][2] + 5.0
+            ]
         );
         assert_eq!(
             scene.hair_object(hair_id).unwrap().hair().guides()[0].points,
@@ -115,15 +122,21 @@ mod tests {
     #[test]
     fn invalid_source_transform_fails_evaluation_without_changing_guides() {
         let (mut scene, source, hair_id) = scene_with_hair();
-        scene.object_mut(source).unwrap().set_transform(Transform3D {
-            translation: [f32::NAN, 0.0, 0.0],
-            ..Transform3D::default()
-        });
+        scene
+            .object_mut(source)
+            .unwrap()
+            .set_transform(Transform3D {
+                translation: [f32::NAN, 0.0, 0.0],
+                ..Transform3D::default()
+            });
         assert_eq!(
             scene.evaluated_hair_guides(hair_id),
             Err(SceneError::Mesh(crate::MeshError::NonFinitePosition))
         );
-        assert_eq!(scene.hair_object(hair_id).unwrap().hair().guides().len(), 512);
+        assert_eq!(
+            scene.hair_object(hair_id).unwrap().hair().guides().len(),
+            512
+        );
     }
 
     #[test]

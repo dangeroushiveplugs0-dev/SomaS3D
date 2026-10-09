@@ -110,7 +110,8 @@ Primitives should be first-class modeling objects, not just a fixed menu of cube
 - `HairPreset` currently defines **Flowing Hair** and **Short Hair**. `HairSettings` provides length, normalized curl and gravity, independent RGBA color, guide amount, and deterministic seed, with preset defaults.
 - Guide roots are sampled over selected face areas, weighted by surface area, and oriented by face normals. Each guide has a compact six-point curve representation for later batched rendering.
 - Repeating generation with the same source mesh, face selection, and settings produces the same guides. Invalid selections/settings are rejected, guide generation is capped at 50,000 guides, and failed restyling preserves the existing object.
-- This is the first procedural geometry layer only. Hair is not yet registered as a `SceneObject`, rendered in a viewport, skinned to a deforming character, or controlled by a floating/docked UI. The short-hair length limits and density presets still need real viewport/device tuning.
+- Hair now has a scene-owned `HairSceneObject` record with a unique scene ID, a name, and a link to its source mesh object. It can be created and restyled through `SceneDocumentEditor`, so those operations share document undo/redo. Deleting the source mesh also removes its dependent hair objects. The scene exposes hair separately from mesh objects because hair guides are curves, not a body mesh.
+- Still outstanding: unified scene-tree presentation, viewport guide rendering, source-topology change handling, skinning/deformation, and the floating/docked UI. The short-hair length limits and density presets still need real viewport/device tuning.
 
 ### Hair creation workflow
 

@@ -7,12 +7,46 @@ mod uv;
 
 pub use material::{Material, MaterialSemantics, PbrMaterial};
 pub use material_eval::{evaluate, EvaluatedPbr};
-pub use topology::{CornerId, EdgeId, FaceId, Mesh, MeshError, VertexId};
+pub use topology::{CornerId, Edge, EdgeId, Face, FaceId, Mesh, MeshError, Vertex, VertexId};
 pub use uv::{Uv, UvCorner, UvError, UvIsland, UvLayer};
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn quad_pair() -> (Mesh, FaceId, FaceId, [VertexId; 4], VertexId, VertexId) {
+        let mut mesh = Mesh::new();
+        let a = mesh.add_vertex([0.0, 0.0, 0.0]);
+        let b = mesh.add_vertex([1.0, 0.0, 0.0]);
+        let c = mesh.add_vertex([1.0, 1.0, 0.0]);
+        let d = mesh.add_vertex([0.0, 1.0, 0.0]);
+        let e = mesh.add_vertex([2.0, 0.0, 0.0]);
+        let f = mesh.add_vertex([2.0, 1.0, 0.0]);
+        let left = mesh.add_face(&[a, b, c, d]).unwrap();
+        let right = mesh.add_face(&[b, e, f, c]).unwrap();
+        (mesh, left, right, [a, b, c, d], e, f)
+    }
+
+    fn set_continuous_pair_uvs(mesh: &mut Mesh, left: FaceId, right: FaceId) {
+        let left_uvs = [
+            Uv::new(0.0, 0.0),
+            Uv::new(1.0, 0.0),
+            Uv::new(1.0, 1.0),
+            Uv::new(0.0, 1.0),
+        ];
+        let right_uvs = [
+            Uv::new(1.0, 0.0),
+            Uv::new(2.0, 0.0),
+            Uv::new(2.0, 1.0),
+            Uv::new(1.0, 1.0),
+        ];
+        for (corner, uv) in left_uvs.into_iter().enumerate() {
+            mesh.set_uv("UVMap", left, corner, uv).unwrap();
+        }
+        for (corner, uv) in right_uvs.into_iter().enumerate() {
+            mesh.set_uv("UVMap", right, corner, uv).unwrap();
+        }
+    }
 
     #[test]
     fn quad_uvs_are_stored_per_corner() {
@@ -44,6 +78,50 @@ mod tests {
         mesh.set_uv("UVMap", face, 1, Uv::new(0.0, 0.0)).unwrap();
         mesh.set_uv("UVMap", face, 2, Uv::new(1.0, 0.0)).unwrap();
         assert!(mesh.validate_uv_layer("UVMap").is_ok());
+    }
+
+    #[test]
+    fn continuous_uvs_form_one_island_across_adjacent_faces() {
+        let (mut mesh, left, right, _, _, _) = quad_pair();
+        set_continuous_pair_uvs(&mut mesh, left, right);
+
+        let islands = mesh.uv_islands("UVMap").unwrap();
+        assert_eq!(islands.len(), 1);
+        assert_eq!(islands[0].faces.len(), 2);
+        assert_eq!(islands[0].corners.len(), 8);
+    }
+
+    #[test]
+    fn explicit_seam_splits_uv_islands_even_when_coordinates_match() {
+        let (mut mesh, left, right, _, _, _) = quad_pair();
+        set_continuous_pair_uvs(&mut mesh, left, right);
+        let shared = mesh.edge_between(VertexId(1), VertexId(2)).unwrap();
+        mesh.set_edge_seam(shared, true).unwrap();
+
+        assert_eq!(mesh.uv_islands("UVMap").unwrap().len(), 2);
+    }
+
+    #[test]
+    fn uv_discontinuity_splits_islands_without_explicit_seam() {
+        let (mut mesh, left, right, _, _, _) = quad_pair();
+        set_continuous_pair_uvs(&mut mesh, left, right);
+        mesh.set_uv("UVMap", right, 0, Uv::new(1.25, 0.0)).unwrap();
+
+        assert_eq!(mesh.uv_islands("UVMap").unwrap().len(), 2);
+    }
+
+    #[test]
+    fn non_finite_uvs_are_rejected() {
+        let mut mesh = Mesh::new();
+        let a = mesh.add_vertex([0.0, 0.0, 0.0]);
+        let b = mesh.add_vertex([1.0, 0.0, 0.0]);
+        let c = mesh.add_vertex([0.0, 1.0, 0.0]);
+        let face = mesh.add_face(&[a, b, c]).unwrap();
+
+        assert_eq!(
+            mesh.set_uv("UVMap", face, 0, Uv::new(f32::NAN, 0.0)),
+            Err(MeshError::Uv(UvError::NonFinite))
+        );
     }
 
     #[test]

@@ -24,7 +24,9 @@ pub struct SceneDocumentEditor {
 
 impl SceneDocumentEditor {
     pub fn new(scene: Scene, undo_limit: usize) -> Self {
-        Self { history: EditHistory::new(scene, undo_limit) }
+        Self {
+            history: EditHistory::new(scene, undo_limit),
+        }
     }
 
     pub fn scene(&self) -> &Scene {
@@ -143,7 +145,9 @@ mod tests {
     #[test]
     fn undo_redo_restores_object_creation_and_deletion() {
         let mut document = SceneDocumentEditor::new(Scene::new(), 8);
-        let id = document.add_primitive("Cube", PrimitiveKind::Cube { size: 1.0 }).unwrap();
+        let id = document
+            .add_primitive("Cube", PrimitiveKind::Cube { size: 1.0 })
+            .unwrap();
         assert_eq!(document.scene().objects().len(), 1);
         assert!(document.undo());
         assert!(document.scene().objects().is_empty());
@@ -183,17 +187,38 @@ mod tests {
         let id = document
             .add_primitive("Cube", PrimitiveKind::Cube { size: 1.0 })
             .unwrap();
-        let original_position = document.scene().object(id).unwrap().mesh().vertex_position(crate::VertexId(0));
+        let original_position = document
+            .scene()
+            .object(id)
+            .unwrap()
+            .mesh()
+            .vertex_position(crate::VertexId(0));
 
         document
             .edit_mesh(id, |mesh| mesh.translate_vertices(&[crate::VertexId(0)], [2.0, 0.0, 0.0]))
             .unwrap();
         assert!(!document.scene().object(id).unwrap().is_parametric());
-        assert_ne!(document.scene().object(id).unwrap().mesh().vertex_position(crate::VertexId(0)), original_position);
+        assert_ne!(
+            document
+                .scene()
+                .object(id)
+                .unwrap()
+                .mesh()
+                .vertex_position(crate::VertexId(0)),
+            original_position
+        );
 
         assert!(document.undo());
         assert!(document.scene().object(id).unwrap().is_parametric());
-        assert_eq!(document.scene().object(id).unwrap().mesh().vertex_position(crate::VertexId(0)), original_position);
+        assert_eq!(
+            document
+                .scene()
+                .object(id)
+                .unwrap()
+                .mesh()
+                .vertex_position(crate::VertexId(0)),
+            original_position
+        );
         assert!(document.redo());
         assert!(!document.scene().object(id).unwrap().is_parametric());
         assert_ne!(document.scene().object(id).unwrap().mesh().vertex_position(crate::VertexId(0)), original_position);
@@ -207,9 +232,11 @@ mod tests {
         assert!(document.undo());
         let before = document.scene().object(id).unwrap().mesh().vertex_position(crate::VertexId(0));
 
-        assert!(document.edit_mesh(id, |mesh| {
-            mesh.translate_vertices(&[crate::VertexId(999)], [1.0, 0.0, 0.0])
-        }).is_err());
+        assert!(document
+            .edit_mesh(id, |mesh| {
+                mesh.translate_vertices(&[crate::VertexId(999)], [1.0, 0.0, 0.0])
+            })
+            .is_err());
         assert_eq!(document.scene().object(id).unwrap().mesh().vertex_position(crate::VertexId(0)), before);
         assert!(document.can_redo());
         assert!(document.scene().object(id).unwrap().is_parametric());

@@ -92,7 +92,9 @@ mod tests {
     #[test]
     fn snapshot_contains_world_space_mesh_positions_and_polygon_indices() {
         let mut scene = Scene::new();
-        let object_id = scene.add_primitive("Cube", PrimitiveKind::Cube { size: 1.0 }).unwrap();
+        let object_id = scene
+            .add_primitive("Cube", PrimitiveKind::Cube { size: 1.0 })
+            .unwrap();
         scene
             .object_mut(object_id)
             .unwrap()

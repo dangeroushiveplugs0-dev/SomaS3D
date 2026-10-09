@@ -149,5 +149,4 @@ mod tests {
     }
 
     #[allow(dead_code)]
-    fn face_id_type_is_available_to_downstream_render_adapters(_: FaceId) {}
 }

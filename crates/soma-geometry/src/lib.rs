@@ -260,10 +260,8 @@ mod tests {
         let a = mesh.add_vertex([0.0, 0.0, 0.0]);
         let b = mesh.add_vertex([1.0, 0.0, 0.0]);
 
-        let result = mesh.set_vertex_positions(&[
-            (a, [5.0, 5.0, 5.0]),
-            (b, [f32::INFINITY, 0.0, 0.0]),
-        ]);
+        let result =
+            mesh.set_vertex_positions(&[(a, [5.0, 5.0, 5.0]), (b, [f32::INFINITY, 0.0, 0.0])]);
 
         assert_eq!(result, Err(MeshError::NonFinitePosition));
         assert_eq!(mesh.vertex_position(a), Some([0.0, 0.0, 0.0]));
@@ -281,5 +279,4 @@ mod tests {
         );
         assert_eq!(mesh.vertex_position(a), Some([0.0, 0.0, 0.0]));
     }
-
 }

@@ -16,6 +16,12 @@ SomaS3D is being built as a modeling application first.
 
 The PBR material data model and semantic material evaluator are already part of the initial foundation. Rich texture image management and authoring tools remain downstream of stable topology and UV behavior.
 
+## Vertex editing
+
+- Multi-vertex position changes validate every vertex ID and every coordinate before changing any position.
+- Non-finite positions and duplicate IDs in one update are rejected atomically.
+- Translation uses the same validation path, so overflow to infinity cannot partially move a selection.
+
 ## Topology and UV rules
 
 - `Mesh::validate_topology` reports invalid vertex positions, broken edge/face references, missing edges, duplicate edges, and non-manifold edges without silently repairing user data. Non-manifold edges are diagnostics, not automatically treated as fatal corruption.

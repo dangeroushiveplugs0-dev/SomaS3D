@@ -171,7 +171,10 @@ impl ModelingEditor {
                     let Some(other) = state.mesh.edge(candidate) else {
                         continue;
                     };
-                    if endpoints.iter().any(|vertex| other.vertices.contains(vertex)) {
+                    if endpoints
+                        .iter()
+                        .any(|vertex| other.vertices.contains(vertex))
+                    {
                         queue.push_back(candidate);
                     }
                 }
@@ -302,7 +305,11 @@ mod tests {
     fn connected_edge_selection_follows_shared_vertices() {
         let (mesh, _, _) = quad();
         let mut editor = ModelingEditor::new(mesh, 10);
-        let seed = editor.state().mesh.edge_between(VertexId(0), VertexId(1)).unwrap();
+        let seed = editor
+            .state()
+            .mesh
+            .edge_between(VertexId(0), VertexId(1))
+            .unwrap();
         assert_eq!(editor.select_connected_edges(seed).unwrap(), 4);
         assert_eq!(editor.state().selection().edges().count(), 4);
     }

@@ -1,6 +1,6 @@
 use std::collections::{HashMap, VecDeque};
 
-use crate::uv::{Uv, UvCorner, UvError, UvIsland, UvLayer};
+use crate::uv::{Uv, UvCorner, UvError, UvIsland, UvLayer, UvTransform};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct VertexId(pub u32);
@@ -177,6 +177,52 @@ impl Mesh {
             .entry(layer_name.to_owned())
             .or_insert_with(|| UvLayer::new(layer_name));
         layer.set(face, corner, uv).map_err(MeshError::Uv)
+    }
+
+    /// Applies a UV transform to selected face corners atomically.
+    ///
+    /// All IDs, existing UV values, and transformed coordinates are validated
+    /// before any coordinates are changed. Duplicate corner IDs are applied once.
+    pub fn transform_uv_corners(
+        &mut self,
+        layer_name: &str,
+        corners: &[UvCorner],
+        transform: UvTransform,
+    ) -> Result<(), MeshError> {
+        let layer = self
+            .uv_layers
+            .get(layer_name)
+            .ok_or_else(|| MeshError::UvLayerNotFound(layer_name.to_owned()))?;
+
+        let mut updates = Vec::with_capacity(corners.len());
+        for &corner in corners {
+            if updates.iter().any(|(existing, _)| *existing == corner) {
+                continue;
+            }
+            let face_data = self
+                .faces
+                .get(corner.face.0 as usize)
+                .ok_or(MeshError::FaceNotFound(corner.face))?;
+            if corner.corner >= face_data.vertices.len() {
+                return Err(MeshError::Uv(UvError::CornerOutOfRange {
+                    face: corner.face,
+                    corner: corner.corner,
+                }));
+            }
+            let current = layer.get(corner.face, corner.corner).ok_or(
+                MeshError::Uv(UvError::MissingCoordinate(corner)),
+            )?;
+            updates.push((corner, transform.apply(current).map_err(MeshError::Uv)?));
+        }
+
+        let layer = self
+            .uv_layers
+            .get_mut(layer_name)
+            .expect("layer was checked before validation");
+        for (corner, uv) in updates {
+            layer.set(corner.face, corner.corner, uv).map_err(MeshError::Uv)?;
+        }
+        Ok(())
     }
 
     pub fn validate_uv_layer(&self, name: &str) -> Result<(), MeshError> {

@@ -9,7 +9,7 @@ SomaS3D is being built as a modeling application first.
 3. Selection
 4. Fundamental modeling operations
 5. Undo/redo
-6. Viewport rendering
+6. Viewport scene evaluation and rendering
 7. UV editor
 8. Texturing and material authoring
 9. Node-based shader/material editor
@@ -17,6 +17,14 @@ SomaS3D is being built as a modeling application first.
 11. Performance and stress testing
 
 The PBR material data model and semantic material evaluator are already part of the initial foundation. Rich texture image management and authoring tools remain downstream of stable topology and UV behavior.
+
+## Viewport scene snapshot
+
+- `Scene::viewport_snapshot` produces a renderer-neutral, immutable snapshot of the current scene.
+- Mesh positions and hair guides are evaluated in world space; polygon indices remain indexed against each object's evaluated vertex array.
+- The snapshot carries object IDs, names, parametric status, active selection, and hair color/guide data for the renderer to consume.
+- Invalid transforms or invalid topology references fail snapshot creation rather than returning partial render data.
+- This is the render-data boundary only. A GPU renderer, camera/navigation controls, viewport presentation, and interactive selection are still separate milestones.
 
 ## Face deletion
 

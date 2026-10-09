@@ -106,7 +106,6 @@ impl ViewportSceneSnapshot {
     }
 }
 
-
 /// Triangulates a simple planar polygon using ear clipping after projection
 /// onto the plane's dominant axis. Returns an empty list for malformed,
 /// self-degenerate, or non-finite polygons rather than generating bad indices.
@@ -130,12 +129,9 @@ fn triangulate_polygon(positions: &[[f32; 3]], polygon: &[u32]) -> Vec<u32> {
     for index in 0..points.len() {
         let current = points[index];
         let next = points[(index + 1) % points.len()];
-        normal[0] += (current[1] as f64 - next[1] as f64)
-            * (current[2] as f64 + next[2] as f64);
-        normal[1] += (current[2] as f64 - next[2] as f64)
-            * (current[0] as f64 + next[0] as f64);
-        normal[2] += (current[0] as f64 - next[0] as f64)
-            * (current[1] as f64 + next[1] as f64);
+        normal[0] += (current[1] as f64 - next[1] as f64) * (current[2] as f64 + next[2] as f64);
+        normal[1] += (current[2] as f64 - next[2] as f64) * (current[0] as f64 + next[0] as f64);
+        normal[2] += (current[0] as f64 - next[0] as f64) * (current[1] as f64 + next[1] as f64);
     }
     let axis = (0..3)
         .max_by(|a, b| normal[*a].abs().total_cmp(&normal[*b].abs()))
@@ -173,8 +169,7 @@ fn triangulate_polygon(positions: &[[f32; 3]], polygon: &[u32]) -> Vec<u32> {
             let b = projected[current];
             let c = projected[next];
             if distance_squared(a, b) <= 1.0e-24
-                || cross_2d(a, b, c).abs() <= 1.0e-12
-                    && point_between(a, b, c)
+                || cross_2d(a, b, c).abs() <= 1.0e-12 && point_between(a, b, c)
             {
                 remaining.remove(i);
                 changed = true;
@@ -209,11 +204,7 @@ fn triangulate_polygon(positions: &[[f32; 3]], polygon: &[u32]) -> Vec<u32> {
             if contains_point {
                 continue;
             }
-            triangles.extend_from_slice(&[
-                polygon[previous],
-                polygon[current],
-                polygon[next],
-            ]);
+            triangles.extend_from_slice(&[polygon[previous], polygon[current], polygon[next]]);
             remaining.remove(i);
             clipped = true;
             break;
@@ -273,7 +264,6 @@ mod tests {
     use super::*;
     use crate::{HairPreset, HairSettings, PrimitiveKind, Scene};
 
-
     #[test]
     fn concave_polygon_ear_clipping_preserves_polygon_area() {
         let positions = vec![
@@ -293,10 +283,7 @@ mod tests {
                 let a = positions[triangle[0] as usize];
                 let b = positions[triangle[1] as usize];
                 let c = positions[triangle[2] as usize];
-                ((b[0] - a[0]) * (c[1] - a[1])
-                    - (b[1] - a[1]) * (c[0] - a[0]))
-                    .abs()
-                    * 0.5
+                ((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])).abs() * 0.5
             })
             .sum();
         assert!((triangle_area - 3.0).abs() < 1.0e-5);

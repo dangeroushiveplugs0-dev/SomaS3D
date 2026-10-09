@@ -62,7 +62,10 @@ mod tests {
         mesh.set_uv("UVMap", face, 2, Uv::new(1.0, 1.0)).unwrap();
         mesh.set_uv("UVMap", face, 3, Uv::new(0.0, 1.0)).unwrap();
 
-        assert_eq!(mesh.uv_layer("UVMap").unwrap().get(face, 2), Some(Uv::new(1.0, 1.0)));
+        assert_eq!(
+            mesh.uv_layer("UVMap").unwrap().get(face, 2),
+            Some(Uv::new(1.0, 1.0))
+        );
         assert!(mesh.validate_uv_layer("UVMap").is_ok());
     }
 
@@ -129,7 +132,11 @@ mod tests {
         let material = Material {
             name: "Skin".into(),
             pbr: PbrMaterial::default(),
-            semantics: MaterialSemantics { wetness: 0.8, dryness: 0.0, organicness: 1.0 },
+            semantics: MaterialSemantics {
+                wetness: 0.8,
+                dryness: 0.0,
+                organicness: 1.0,
+            },
         };
         assert_eq!(material.semantics.wetness, 0.8);
         assert_eq!(material.pbr.roughness, 0.5);

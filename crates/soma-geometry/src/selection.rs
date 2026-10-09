@@ -24,7 +24,10 @@ pub struct Selection {
 
 impl Selection {
     pub fn new(mode: SelectionMode) -> Self {
-        Self { mode, ..Self::default() }
+        Self {
+            mode,
+            ..Self::default()
+        }
     }
 
     pub fn mode(&self) -> SelectionMode {

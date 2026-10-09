@@ -15,7 +15,6 @@ internal object NativeGeometry {
         System.loadLibrary("soma_android_bridge")
     }.isSuccess
 
-    @JvmStatic
     private external fun sceneJson(): String
 
     fun loadDefaultMesh(): ViewportMeshData? {

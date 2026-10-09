@@ -123,7 +123,10 @@ mod tests {
             },
         )
         .unwrap();
-        assert_eq!(object.mesh().vertex_position(VertexId(0)), Some([0.0, 1.0, 0.0]));
+        assert_eq!(
+            object.mesh().vertex_position(VertexId(0)),
+            Some([0.0, 1.0, 0.0])
+        );
 
         object
             .set_kind(PrimitiveKind::UvSphere {
@@ -136,7 +139,10 @@ mod tests {
         assert_eq!(object.id(), PrimitiveObjectId(42));
         assert_eq!(object.name(), "Sphere");
         assert_eq!(object.geometry_revision(), 1);
-        assert_eq!(object.mesh().vertex_position(VertexId(0)), Some([0.0, 2.5, 0.0]));
+        assert_eq!(
+            object.mesh().vertex_position(VertexId(0)),
+            Some([0.0, 2.5, 0.0])
+        );
         assert_eq!(
             object.kind(),
             PrimitiveKind::UvSphere {

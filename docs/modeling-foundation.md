@@ -282,3 +282,9 @@ This is a roadmap item, not a claim that spatial drawing, text, effects, or imag
 - CPU picking tests that ray against the prepared triangle buffers and returns the nearest mesh hit, including object ID, triangle index, world-space hit point, distance, and barycentric coordinates.
 - Invalid viewport coordinates, singular/non-finite matrices, malformed triangle indices, and triangles behind the ray origin are safely ignored.
 - This makes mesh-surface selection possible for a future UI to call, but does not yet provide touch-event wiring, vertex/edge tolerance picking, hair picking, a GPU renderer, or a visible application viewport.
+
+## CPU viewport reference renderer
+
+- `ViewportDrawData::render_cpu` now consumes the same camera and draw packets and produces a top-left-origin RGBA8 frame with a depth buffer, neutral lit mesh surfaces, active-object tint, wireframe edges, and authored hair colors.
+- The reference renderer validates viewport dimensions and camera parameters, caps allocation at 16,777,216 pixels, and has tests that verify a scene produces non-background pixels and opaque output.
+- This closes the CPU-side scene-to-pixels path for deterministic tests and diagnostics. It is deliberately not the production renderer: GPU acceleration, robust near-plane clipping, materials/textures, shadows, and Android UI/surface integration remain outstanding.

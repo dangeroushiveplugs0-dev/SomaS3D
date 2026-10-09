@@ -258,7 +258,7 @@ mod tests {
 
         mesh.transform_vertices(&[a], transform).unwrap();
         let result = mesh.vertex_position(a).unwrap();
-        assert!(result[0].abs() < 1e-5);
+        assert!((result[0] - 1.0).abs() < 1e-5);
         assert!((result[1] - 2.0).abs() < 1e-5);
         assert_eq!(mesh.vertex_position(untouched), Some([9.0, 9.0, 9.0]));
     }

@@ -16,6 +16,7 @@ mod topology;
 mod uv;
 mod viewport;
 mod viewport_camera;
+mod viewport_navigation;
 mod viewport_draw;
 
 pub use document_editor::{DocumentEditError, SceneDocumentEditor};
@@ -37,6 +38,7 @@ pub use topology::{
 pub use uv::{Uv, UvCorner, UvError, UvIsland, UvLayer, UvTransform};
 pub use viewport::{ViewportMeshObject, ViewportSceneSnapshot};
 pub use viewport_camera::{ViewportCamera, ViewportCameraError, ViewportCameraMatrices};
+pub use viewport_navigation::{ViewportBounds, ViewportNavigation};
 pub use viewport_draw::{ViewportDrawData, ViewportHairDrawData, ViewportMeshDrawData};
 
 #[cfg(test)]

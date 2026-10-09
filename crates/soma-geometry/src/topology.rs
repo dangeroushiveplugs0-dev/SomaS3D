@@ -209,9 +209,9 @@ impl Mesh {
                     corner: corner.corner,
                 }));
             }
-            let current = layer.get(corner.face, corner.corner).ok_or(
-                MeshError::Uv(UvError::MissingCoordinate(corner)),
-            )?;
+            let current = layer
+                .get(corner.face, corner.corner)
+                .ok_or(MeshError::Uv(UvError::MissingCoordinate(corner)))?;
             updates.push((corner, transform.apply(current).map_err(MeshError::Uv)?));
         }
 
@@ -220,7 +220,9 @@ impl Mesh {
             .get_mut(layer_name)
             .expect("layer was checked before validation");
         for (corner, uv) in updates {
-            layer.set(corner.face, corner.corner, uv).map_err(MeshError::Uv)?;
+            layer
+                .set(corner.face, corner.corner, uv)
+                .map_err(MeshError::Uv)?;
         }
         Ok(())
     }

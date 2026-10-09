@@ -187,18 +187,16 @@ mod tests {
         let before = mesh.uv_layer("UVMap").unwrap().get(face, 0);
         let result = mesh.transform_uv_corners(
             "UVMap",
-            &[
-                UvCorner { face, corner: 0 },
-                UvCorner { face, corner: 99 },
-            ],
+            &[UvCorner { face, corner: 0 }, UvCorner { face, corner: 99 }],
             UvTransform::Translate { delta: [1.0, 1.0] },
         );
         assert_eq!(
             result,
-            Err(MeshError::Uv(UvError::CornerOutOfRange { face, corner: 99 }))
+            Err(MeshError::Uv(UvError::CornerOutOfRange {
+                face,
+                corner: 99
+            }))
         );
         assert_eq!(mesh.uv_layer("UVMap").unwrap().get(face, 0), before);
     }
-
-
 }

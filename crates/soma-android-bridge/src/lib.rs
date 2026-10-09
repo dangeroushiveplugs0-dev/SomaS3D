@@ -81,10 +81,12 @@ pub extern "system" fn Java_com_soma3d_app_NativeGeometry_nativeAddSphere(_env: 
 #[no_mangle]
 pub extern "system" fn Java_com_soma3d_app_NativeGeometry_nativeSetActiveObject(_env: JNIEnv, _class: JClass, id: jlong) -> jlong {
     with_scene(|scene| {
-        scene.set_active_object(Some(soma_geometry::ObjectId(id as u64)))
+        scene
+            .set_active_object(Some(soma_geometry::ObjectId(id as u64)))
             .map_err(|error| format!("select object failed: {error:?}"))?;
         Ok(id)
-    }).unwrap_or(-1) as jlong
+    })
+    .unwrap_or(-1) as jlong
 }
 
 #[cfg(test)]
@@ -94,8 +96,22 @@ mod tests {
     #[test]
     fn scene_persists_added_objects_and_active_selection() {
         let first = add_primitive(PrimitiveKind::Cube { size: 1.0 }, "Test Cube").unwrap();
-        let second = add_primitive(PrimitiveKind::UvSphere { radius: 1.0, segments: 8, rings: 6 }, "Test Sphere").unwrap();
-        with_scene(|scene| scene.set_active_object(Some(soma_geometry::ObjectId(first as u64)).map_err(|error| format!("{error:?}"))).map(|_| ())).unwrap();
+        let second = add_primitive(
+            PrimitiveKind::UvSphere {
+                radius: 1.0,
+                segments: 8,
+                rings: 6,
+            },
+            "Test Sphere",
+        )
+        .unwrap();
+        with_scene(|scene| {
+            scene
+                .set_active_object(Some(soma_geometry::ObjectId(first as u64)))
+                .map_err(|error| format!("{error:?}"))
+                .map(|_| ())
+        })
+        .unwrap();
         let json = snapshot_json().unwrap();
         assert!(json.contains("\"meshes\":["));
         assert!(json.contains("\"Test Cube\""));

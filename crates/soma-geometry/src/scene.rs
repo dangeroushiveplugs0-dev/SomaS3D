@@ -356,7 +356,15 @@ impl Scene {
             .position(|object| object.id == id)
             .ok_or(SceneError::ObjectNotFound(id))?;
         let removed = self.objects.remove(index);
-        if self.active_object == Some(id) {
+        let removed_hair_ids: Vec<_> = self
+            .hair_objects
+            .iter()
+            .filter(|hair| hair.source_object == id)
+            .map(|hair| hair.id)
+            .collect();
+        self.hair_objects
+            .retain(|hair| hair.source_object != id);
+        if self.active_object == Some(id) || removed_hair_ids.contains(&self.active_object.unwrap_or(id)) {
             self.active_object = None;
         }
         Ok(removed)
@@ -393,6 +401,61 @@ mod tests {
         assert_eq!(scene.active_object_id(), Some(second));
         scene.set_active_object(Some(first)).unwrap();
         assert_eq!(scene.active_object_id(), Some(first));
+    }
+
+    #[test]
+    fn hair_is_a_separate_scene_object_and_tracks_source_identity() {
+        let mut scene = Scene::new();
+        let mut mesh = Mesh::new();
+        let a = mesh.add_vertex([0.0, 0.0, 0.0]);
+        let b = mesh.add_vertex([1.0, 0.0, 0.0]);
+        let c = mesh.add_vertex([0.0, 0.0, 1.0]);
+        let face = mesh.add_face(&[a, c, b]).unwrap();
+        let source = scene.add_mesh("Character", mesh).unwrap();
+        let hair_id = scene
+            .add_hair_object(
+                "Scalp Hair",
+                source,
+                &[face],
+                HairPreset::FlowingHair,
+                HairSettings::flowing_hair(),
+            )
+            .unwrap();
+
+        assert_ne!(source, hair_id);
+        assert_eq!(scene.active_object_id(), Some(hair_id));
+        assert_eq!(scene.hair_objects().len(), 1);
+        assert_eq!(scene.hair_object(hair_id).unwrap().source_object(), source);
+        assert_eq!(scene.hair_object(hair_id).unwrap().hair().guides().len(), 512);
+        assert_eq!(scene.object(source).unwrap().mesh().vertex_count(), 3);
+        scene.set_active_object(Some(source)).unwrap();
+    }
+
+    #[test]
+    fn removing_source_object_also_removes_attached_hair() {
+        let mut scene = Scene::new();
+        let mut mesh = Mesh::new();
+        let a = mesh.add_vertex([0.0, 0.0, 0.0]);
+        let b = mesh.add_vertex([1.0, 0.0, 0.0]);
+        let c = mesh.add_vertex([0.0, 0.0, 1.0]);
+        let face = mesh.add_face(&[a, c, b]).unwrap();
+        let source = scene.add_mesh("Character", mesh).unwrap();
+        let hair = scene
+            .add_hair_object(
+                "Hair",
+                source,
+                &[face],
+                HairPreset::ShortHair,
+                HairSettings::short_hair(),
+            )
+            .unwrap();
+
+        scene.remove_object(source).unwrap();
+
+        assert!(scene.hair_object(hair).is_none());
+        assert!(scene.objects().is_empty());
+        assert!(scene.hair_objects().is_empty());
+        assert_eq!(scene.active_object_id(), None);
     }
 
     #[test]

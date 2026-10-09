@@ -18,6 +18,7 @@ mod viewport;
 mod viewport_camera;
 mod viewport_draw;
 mod viewport_navigation;
+mod viewport_picking;
 
 pub use document_editor::{DocumentEditError, SceneDocumentEditor};
 pub use editor::{EditorError, EditorState, ModelingEditor};
@@ -40,6 +41,7 @@ pub use viewport::{ViewportMeshObject, ViewportSceneSnapshot};
 pub use viewport_camera::{ViewportCamera, ViewportCameraError, ViewportCameraMatrices};
 pub use viewport_draw::{ViewportDrawData, ViewportHairDrawData, ViewportMeshDrawData};
 pub use viewport_navigation::{ViewportBounds, ViewportNavigation};
+pub use viewport_picking::{ViewportPickHit, ViewportRay};
 
 #[cfg(test)]
 mod tests {

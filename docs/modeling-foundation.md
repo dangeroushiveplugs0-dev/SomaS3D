@@ -133,3 +133,11 @@ The proposed merge ratios are optimization targets, not a guarantee that arbitra
 - Short Hair should use a clamped, explicitly documented length range; the exact limits should be tuned with real viewport testing rather than guessed now.
 - Floating/docked panel behavior belongs to the future editor UI layer; this geometry repository documents the interaction contract but does not claim to implement that UI yet.
 
+## Geometric primitive generation
+
+- `generate_primitive` builds centered cube, plane, and UV-sphere meshes through a UI-independent API.
+- Primitive dimensions must be finite and positive. UV-sphere segments and rings are validated, and each resolution is capped at 256 for mobile safety.
+- Generated faces share topology vertices and edges instead of duplicating a separate vertex set for every face.
+- The first primitive API deliberately leaves UV authoring to the UV stage. UV sphere seam placement, per-corner coordinates, normals, and viewport-facing creation controls remain follow-up work.
+- Procedural hair will use a separate editable-object representation rather than being forced into these ordinary closed-surface mesh builders.
+

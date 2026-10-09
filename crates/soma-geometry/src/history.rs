@@ -48,15 +48,13 @@ impl<T: Clone> EditHistory<T> {
     ///
     /// Failed edits do not change the current state, undo history, or redo history.
     /// A successful edit clears redo history, as expected for a new branch of edits.
-    pub fn apply<E>(
-        &mut self,
-        edit: impl FnOnce(&mut T) -> Result<(), E>,
-    ) -> Result<(), E> {
+    pub fn apply<E>(&mut self, edit: impl FnOnce(&mut T) -> Result<(), E>) -> Result<(), E> {
         let mut candidate = self.current.clone();
         edit(&mut candidate)?;
 
         if self.limit > 0 {
-            self.undo.push(std::mem::replace(&mut self.current, candidate));
+            self.undo
+                .push(std::mem::replace(&mut self.current, candidate));
             if self.undo.len() > self.limit {
                 self.undo.remove(0);
             }
@@ -72,7 +70,8 @@ impl<T: Clone> EditHistory<T> {
         let Some(previous) = self.undo.pop() else {
             return false;
         };
-        self.redo.push(std::mem::replace(&mut self.current, previous));
+        self.redo
+            .push(std::mem::replace(&mut self.current, previous));
         true
     }
 

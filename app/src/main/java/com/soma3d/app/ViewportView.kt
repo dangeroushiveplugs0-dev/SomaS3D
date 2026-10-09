@@ -197,7 +197,7 @@ class ViewportView(context: Context) : View(context) {
             val projected = mesh.vertices.map { project(V3(it[0], it[1], it[2]), cx, cy, focal) }
             for (polygon in mesh.polygons) {
                 if (polygon.size < 3 || polygon.any { it !in projected.indices }) continue
-                val points = polygon.mapNotNull { projected[it] }
+                val points = polygon.map { projected[it] }.filterNotNull()
                 if (points.size != polygon.size) continue
                 if (pointInPolygon(x, y, points)) {
                     hits.add(ProjectedFace(mesh.id, points.map { it.depth }.average().toFloat(), points))

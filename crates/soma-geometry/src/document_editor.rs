@@ -94,12 +94,14 @@ impl SceneDocumentEditor {
         id: ObjectId,
         settings: HairSettings,
     ) -> Result<(), DocumentEditError> {
-        self.history.apply(|scene| scene.restyle_hair(id, settings))?;
+        self.history
+            .apply(|scene| scene.restyle_hair(id, settings))?;
         Ok(())
     }
 
     pub fn remove_hair_object(&mut self, id: ObjectId) -> Result<(), DocumentEditError> {
-        self.history.apply(|scene| scene.remove_hair_object(id).map(|_| ()))?;
+        self.history
+            .apply(|scene| scene.remove_hair_object(id).map(|_| ()))?;
         Ok(())
     }
 
@@ -348,7 +350,13 @@ mod tests {
             )
             .unwrap();
         assert_eq!(
-            document.scene().hair_object(hair_id).unwrap().hair().guides().len(),
+            document
+                .scene()
+                .hair_object(hair_id)
+                .unwrap()
+                .hair()
+                .guides()
+                .len(),
             2048
         );
 
@@ -358,25 +366,49 @@ mod tests {
         };
         document.restyle_hair(hair_id, denser).unwrap();
         assert_eq!(
-            document.scene().hair_object(hair_id).unwrap().hair().guides().len(),
+            document
+                .scene()
+                .hair_object(hair_id)
+                .unwrap()
+                .hair()
+                .guides()
+                .len(),
             4096
         );
 
         assert!(document.undo());
         assert_eq!(
-            document.scene().hair_object(hair_id).unwrap().hair().guides().len(),
+            document
+                .scene()
+                .hair_object(hair_id)
+                .unwrap()
+                .hair()
+                .guides()
+                .len(),
             2048
         );
         assert!(document.undo());
         assert!(document.scene().hair_object(hair_id).is_none());
         assert!(document.redo());
         assert_eq!(
-            document.scene().hair_object(hair_id).unwrap().hair().guides().len(),
+            document
+                .scene()
+                .hair_object(hair_id)
+                .unwrap()
+                .hair()
+                .guides()
+                .len(),
             2048
         );
         assert!(document.redo());
         assert_eq!(
-            document.scene().hair_object(hair_id).unwrap().hair().guides().len(),
+            document
+                .scene()
+                .hair_object(hair_id)
+                .unwrap()
+                .hair()
+                .guides()
+                .len(),
             4096
         );
     }
@@ -403,5 +435,4 @@ mod tests {
         assert!(document.scene().hair_objects().is_empty());
         assert_eq!(document.scene().object(source).unwrap().name(), "Character");
     }
-
 }

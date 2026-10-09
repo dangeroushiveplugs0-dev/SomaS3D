@@ -199,3 +199,11 @@ The renderer will need a compatible lighting path to quantize diffuse lighting i
 6. Add texture nodes and advanced graph features incrementally, with mobile performance budgets and test coverage.
 
 The reference image is a shading goal, not a promise that the current geometry foundation already renders toon shading. The shader graph belongs after the scene/document and rendering interfaces are stable enough to consume it.
+
+
+## Scene-aware modeling commands
+
+- `SceneModelingEditor` routes supported mesh commands to the active scene object while keeping a separate `ModelingEditor` history and component selection for each object.
+- Mesh edits commit back to the object's local-space geometry. The object's ID and object-level transform remain unchanged, and the first direct topology/vertex edit converts a parametric primitive to ordinary editable mesh geometry.
+- Undo and redo synchronize the selected object's restored mesh back into the scene. Switching active objects does not discard the other object's edit history.
+- Current wrapper commands include component selection, selected-vertex transforms, face extrusion, face deletion, and per-object undo/redo. Scene creation/removal and object transforms are not yet part of the mesh undo stack; those require a document-level transaction history.

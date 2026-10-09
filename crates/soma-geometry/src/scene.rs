@@ -5,7 +5,7 @@
 //! the future viewport. Parametric objects can be edited until topology
 //! editing explicitly converts them to ordinary mesh objects.
 
-use crate::{generate_primitive, Mesh, PrimitiveError, PrimitiveKind, Transform3D};
+use crate::{generate_primitive, Mesh, MeshError, PrimitiveError, PrimitiveKind, Transform3D, VertexId};
 
 /// Stable identity assigned by a scene. IDs are never reused within a scene.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -14,11 +14,18 @@ pub struct ObjectId(pub u64);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SceneError {
     Primitive(PrimitiveError),
+    Mesh(MeshError),
     ObjectNotFound(ObjectId),
     DuplicateObjectId(ObjectId),
     IdExhausted,
     RevisionOverflow,
     NotParametric(ObjectId),
+}
+
+impl From<MeshError> for SceneError {
+    fn from(value: MeshError) -> Self {
+        Self::Mesh(value)
+    }
 }
 
 impl From<PrimitiveError> for SceneError {
@@ -89,6 +96,17 @@ impl SceneObject {
             ObjectGeometry::Parametric { revision, .. } => *revision,
             ObjectGeometry::Mesh(_) => 0,
         }
+    }
+
+    /// Returns a transformed copy of this object's mesh for viewport evaluation.
+    /// The stored mesh remains in local space and is never modified.
+    pub fn evaluated_mesh(&self) -> Result<Mesh, SceneError> {
+        let mut mesh = self.mesh().clone();
+        let vertices: Vec<_> = (0..mesh.vertex_count())
+            .map(|index| VertexId(index as u32))
+            .collect();
+        mesh.transform_vertices(&vertices, self.transform)?;
+        Ok(mesh)
     }
 }
 
@@ -327,6 +345,45 @@ mod tests {
         assert_eq!(object.mesh().vertex_count(), before);
         assert_eq!(object.transform(), transform);
         assert_eq!(object.id(), id);
+    }
+
+    #[test]
+    fn evaluated_mesh_applies_object_transform_without_changing_local_geometry() {
+        let mut scene = Scene::new();
+        let id = scene
+            .add_primitive("Cube", PrimitiveKind::Cube { size: 2.0 })
+            .unwrap();
+        let object = scene.object(id).unwrap();
+        let local_before = object.mesh().vertex_position(VertexId(0)).unwrap();
+        scene.object_mut(id).unwrap().set_transform(Transform3D {
+            translation: [3.0, -2.0, 5.0],
+            ..Transform3D::default()
+        });
+
+        let evaluated = scene.object(id).unwrap().evaluated_mesh().unwrap();
+        assert_eq!(
+            evaluated.vertex_position(VertexId(0)),
+            Some([local_before[0] + 3.0, local_before[1] - 2.0, local_before[2] + 5.0])
+        );
+        assert_eq!(scene.object(id).unwrap().mesh().vertex_position(VertexId(0)), Some(local_before));
+        assert!(evaluated.validate_topology().is_empty());
+    }
+
+    #[test]
+    fn invalid_object_transform_fails_evaluation_without_mutating_scene_mesh() {
+        let mut scene = Scene::new();
+        let id = scene
+            .add_primitive("Cube", PrimitiveKind::Cube { size: 1.0 })
+            .unwrap();
+        scene.object_mut(id).unwrap().set_transform(Transform3D {
+            translation: [f32::NAN, 0.0, 0.0],
+            ..Transform3D::default()
+        });
+        assert_eq!(
+            scene.object(id).unwrap().evaluated_mesh(),
+            Err(SceneError::Mesh(MeshError::NonFinitePosition))
+        );
+        assert_eq!(scene.object(id).unwrap().mesh().vertex_position(VertexId(0)), Some([-0.5, -0.5, -0.5]));
     }
 
     #[test]

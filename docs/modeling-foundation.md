@@ -270,3 +270,9 @@ This is a roadmap item, not a claim that spatial drawing, text, effects, or imag
 - Viewport draw-buffer preparation now uses dominant-axis ear clipping for simple concave polygons rather than assuming every face is convex. Invalid or degenerate polygons do not emit surface triangles; their authored edges remain available in the wireframe buffer.
 - These are CPU-side building blocks only. A GPU backend, camera gestures/orbit/pan/zoom, fit-to-object, depth testing, lighting, selection/picking, and the actual application viewport remain unimplemented.
 
+## Viewport camera navigation
+
+- `ViewportNavigation` provides camera orbit around a target, pixel-scaled pan, bounded multiplicative zoom, and fit-to-axis-aligned-bounds while preserving the current view direction.
+- Orbit pitch is clamped away from the poles; pan is scaled by vertical field of view, target distance, and viewport height. Invalid gesture values and degenerate camera poses are rejected.
+- These helpers are ready for a UI to call, but no touch controls or visible viewport have been wired up yet.
+

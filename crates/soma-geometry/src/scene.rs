@@ -6,7 +6,8 @@
 //! editing explicitly converts them to ordinary mesh objects.
 
 use crate::{
-    generate_primitive, Mesh, MeshError, PrimitiveError, PrimitiveKind, Transform3D, VertexId,
+    generate_primitive, FaceId, HairError, HairObject, HairPreset, HairSettings, Mesh, MeshError,
+    PrimitiveError, PrimitiveKind, Transform3D, VertexId,
 };
 
 /// Stable identity assigned by a scene. IDs are never reused within a scene.
@@ -17,6 +18,7 @@ pub struct ObjectId(pub u64);
 pub enum SceneError {
     Primitive(PrimitiveError),
     Mesh(MeshError),
+    Hair(HairError),
     ObjectNotFound(ObjectId),
     DuplicateObjectId(ObjectId),
     IdExhausted,
@@ -33,6 +35,12 @@ impl From<MeshError> for SceneError {
 impl From<PrimitiveError> for SceneError {
     fn from(value: PrimitiveError) -> Self {
         Self::Primitive(value)
+    }
+}
+
+impl From<HairError> for SceneError {
+    fn from(value: HairError) -> Self {
+        Self::Hair(value)
     }
 }
 
@@ -118,10 +126,39 @@ impl SceneObject {
     }
 }
 
-/// Scene/document container for objects and active-object state.
+/// Hair scene object whose guide roots are stored in the source object's local space.
+/// Its source object transform is therefore also the transform used for hair rendering.
+#[derive(Debug, Clone, PartialEq)]
+pub struct HairSceneObject {
+    id: ObjectId,
+    name: String,
+    source_object: ObjectId,
+    hair: HairObject,
+}
+
+impl HairSceneObject {
+    pub fn id(&self) -> ObjectId {
+        self.id
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn source_object(&self) -> ObjectId {
+        self.source_object
+    }
+
+    pub fn hair(&self) -> &HairObject {
+        &self.hair
+    }
+}
+
+/// Scene/document container for mesh objects, procedural hair, and active-object state.
 #[derive(Debug, Clone, Default)]
 pub struct Scene {
     objects: Vec<SceneObject>,
+    hair_objects: Vec<HairSceneObject>,
     active_object: Option<ObjectId>,
     next_id: u64,
 }
@@ -133,6 +170,14 @@ impl Scene {
 
     pub fn objects(&self) -> &[SceneObject] {
         &self.objects
+    }
+
+    pub fn hair_objects(&self) -> &[HairSceneObject] {
+        &self.hair_objects
+    }
+
+    pub fn hair_object(&self, id: ObjectId) -> Option<&HairSceneObject> {
+        self.hair_objects.iter().find(|object| object.id == id)
     }
 
     pub fn object(&self, id: ObjectId) -> Option<&SceneObject> {
@@ -149,7 +194,7 @@ impl Scene {
 
     pub fn set_active_object(&mut self, id: Option<ObjectId>) -> Result<(), SceneError> {
         if let Some(id) = id {
-            if self.object(id).is_none() {
+            if self.object(id).is_none() && self.hair_object(id).is_none() {
                 return Err(SceneError::ObjectNotFound(id));
             }
         }
@@ -194,6 +239,74 @@ impl Scene {
         });
         self.active_object = Some(id);
         Ok(id)
+    }
+
+    /// Creates a procedural hair object attached to selected faces of a mesh object.
+    /// Hair is stored separately and does not alter the source mesh topology.
+    pub fn add_hair_object(
+        &mut self,
+        name: impl Into<String>,
+        source_object: ObjectId,
+        selected_faces: &[FaceId],
+        preset: HairPreset,
+        settings: HairSettings,
+    ) -> Result<ObjectId, SceneError> {
+        let source_mesh = self
+            .object(source_object)
+            .ok_or(SceneError::ObjectNotFound(source_object))?
+            .mesh();
+        let hair = HairObject::generate(source_mesh, selected_faces, preset, settings)?;
+        let id = self.allocate_id()?;
+        self.hair_objects.push(HairSceneObject {
+            id,
+            name: name.into(),
+            source_object,
+            hair,
+        });
+        self.active_object = Some(id);
+        Ok(id)
+    }
+
+    /// Rebuilds a hair object's guides against its current source mesh.
+    /// The existing guides remain intact if generation fails.
+    pub fn restyle_hair(
+        &mut self,
+        id: ObjectId,
+        settings: HairSettings,
+    ) -> Result<(), SceneError> {
+        let hair_object = self
+            .hair_object(id)
+            .ok_or(SceneError::ObjectNotFound(id))?;
+        let source_object = hair_object.source_object;
+        let source_faces = hair_object.hair.source_faces().to_vec();
+        let preset = hair_object.hair.preset();
+        let source_mesh = self
+            .object(source_object)
+            .ok_or(SceneError::ObjectNotFound(source_object))?
+            .mesh();
+        let replacement = HairObject::generate(source_mesh, &source_faces, preset, settings)?;
+        self.hair_object_mut(id)
+            .ok_or(SceneError::ObjectNotFound(id))?
+            .hair = replacement;
+        Ok(())
+    }
+
+    fn hair_object_mut(&mut self, id: ObjectId) -> Option<&mut HairSceneObject> {
+        self.hair_objects.iter_mut().find(|object| object.id == id)
+    }
+
+    /// Removes a hair object and clears active selection if needed.
+    pub fn remove_hair_object(&mut self, id: ObjectId) -> Result<HairSceneObject, SceneError> {
+        let index = self
+            .hair_objects
+            .iter()
+            .position(|object| object.id == id)
+            .ok_or(SceneError::ObjectNotFound(id))?;
+        let removed = self.hair_objects.remove(index);
+        if self.active_object == Some(id) {
+            self.active_object = None;
+        }
+        Ok(removed)
     }
 
     /// Regenerates a primitive without changing its object ID or transform.

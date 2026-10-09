@@ -75,10 +75,7 @@ impl ViewportSceneSnapshot {
                     }
                 }
 
-                let edge_indices = unique_edges
-                    .into_iter()
-                    .flat_map(|(a, b)| [a, b])
-                    .collect();
+                let edge_indices = unique_edges.into_iter().flat_map(|(a, b)| [a, b]).collect();
 
                 ViewportMeshDrawData {
                     object_id: mesh.id,
@@ -138,8 +135,14 @@ mod tests {
         assert_eq!(mesh.positions.len(), 8);
         assert_eq!(mesh.triangle_indices.len(), 36);
         assert_eq!(mesh.edge_indices.len(), 24);
-        assert!(mesh.triangle_indices.iter().all(|index| (*index as usize) < mesh.positions.len()));
-        assert!(mesh.edge_indices.iter().all(|index| (*index as usize) < mesh.positions.len()));
+        assert!(mesh
+            .triangle_indices
+            .iter()
+            .all(|index| (*index as usize) < mesh.positions.len()));
+        assert!(mesh
+            .edge_indices
+            .iter()
+            .all(|index| (*index as usize) < mesh.positions.len()));
     }
 
     #[test]
@@ -177,7 +180,11 @@ mod tests {
             .add_primitive("Cube", PrimitiveKind::Cube { size: 1.0 })
             .unwrap();
         let draw = scene.viewport_snapshot().unwrap().draw_data();
-        let mesh = draw.meshes.iter().find(|mesh| mesh.object_id == cube).unwrap();
+        let mesh = draw
+            .meshes
+            .iter()
+            .find(|mesh| mesh.object_id == cube)
+            .unwrap();
 
         let edge_pairs: Vec<_> = mesh.edge_indices.chunks_exact(2).collect();
         assert_eq!(edge_pairs.len(), 12);

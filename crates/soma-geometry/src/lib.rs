@@ -6,6 +6,7 @@ mod material;
 mod material_eval;
 mod primitive_object;
 mod primitives;
+mod scene;
 mod selection;
 mod topology;
 mod uv;
@@ -16,6 +17,7 @@ pub use material::{Material, MaterialSemantics, PbrMaterial};
 pub use material_eval::{evaluate, EvaluatedPbr};
 pub use primitive_object::{PrimitiveObject, PrimitiveObjectError, PrimitiveObjectId};
 pub use primitives::{generate_primitive, PrimitiveError, PrimitiveKind};
+pub use scene::{ObjectId, Scene, SceneError, SceneObject};
 pub use selection::{Selection, SelectionMode};
 pub use topology::{
     CornerId, Edge, EdgeId, ExtrusionResult, Face, FaceId, Mesh, MeshError, TopologyIssue,

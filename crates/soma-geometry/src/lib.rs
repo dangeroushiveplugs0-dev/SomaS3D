@@ -10,7 +10,8 @@ pub use material::{Material, MaterialSemantics, PbrMaterial};
 pub use material_eval::{evaluate, EvaluatedPbr};
 pub use selection::{Selection, SelectionMode};
 pub use topology::{
-    CornerId, Edge, EdgeId, Face, FaceId, Mesh, MeshError, TopologyIssue, TopologyRemap, Vertex, VertexId,
+    CornerId, Edge, EdgeId, Face, FaceId, Mesh, MeshError, TopologyIssue, TopologyRemap, Vertex,
+    VertexId,
 };
 pub use uv::{Uv, UvCorner, UvError, UvIsland, UvLayer, UvTransform};
 
@@ -295,13 +296,8 @@ mod tests {
         for corner in 0..4 {
             mesh.set_uv("UVMap", first, corner, Uv::new(corner as f32, 0.0))
                 .unwrap();
-            mesh.set_uv(
-                "UVMap",
-                second,
-                corner,
-                Uv::new(10.0 + corner as f32, 1.0),
-            )
-            .unwrap();
+            mesh.set_uv("UVMap", second, corner, Uv::new(10.0 + corner as f32, 1.0))
+                .unwrap();
         }
         let shared = mesh.edge_between(b, c).unwrap();
         mesh.set_edge_seam(shared, true).unwrap();
@@ -315,7 +311,10 @@ mod tests {
             mesh.uv_layer("UVMap").unwrap().get(FaceId(0), 2),
             Some(Uv::new(12.0, 1.0))
         );
-        assert_eq!(mesh.edge(mesh.edge_between(b, c).unwrap()).unwrap().seam, true);
+        assert_eq!(
+            mesh.edge(mesh.edge_between(b, c).unwrap()).unwrap().seam,
+            true
+        );
         assert!(mesh.validate_topology().is_empty());
         mesh.validate_uv_layer("UVMap").unwrap();
     }

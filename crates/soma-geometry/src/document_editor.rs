@@ -331,4 +331,77 @@ mod tests {
         assert_eq!(document.scene().object(id).unwrap().name(), "Cube");
         assert!(document.can_redo());
     }
+
+    #[test]
+    fn hair_creation_and_restyling_share_document_undo_redo() {
+        let mut document = SceneDocumentEditor::new(Scene::new(), 8);
+        let source = document
+            .add_primitive("Character", PrimitiveKind::Cube { size: 1.0 })
+            .unwrap();
+        let hair_id = document
+            .add_hair_object(
+                "Scalp Hair",
+                source,
+                &[crate::FaceId(0)],
+                crate::HairPreset::ShortHair,
+                crate::HairSettings::short_hair(),
+            )
+            .unwrap();
+        assert_eq!(
+            document.scene().hair_object(hair_id).unwrap().hair().guides().len(),
+            2048
+        );
+
+        let denser = crate::HairSettings {
+            amount: 4096,
+            ..crate::HairSettings::short_hair()
+        };
+        document.restyle_hair(hair_id, denser).unwrap();
+        assert_eq!(
+            document.scene().hair_object(hair_id).unwrap().hair().guides().len(),
+            4096
+        );
+
+        assert!(document.undo());
+        assert_eq!(
+            document.scene().hair_object(hair_id).unwrap().hair().guides().len(),
+            2048
+        );
+        assert!(document.undo());
+        assert!(document.scene().hair_object(hair_id).is_none());
+        assert!(document.redo());
+        assert_eq!(
+            document.scene().hair_object(hair_id).unwrap().hair().guides().len(),
+            2048
+        );
+        assert!(document.redo());
+        assert_eq!(
+            document.scene().hair_object(hair_id).unwrap().hair().guides().len(),
+            4096
+        );
+    }
+
+    #[test]
+    fn failed_hair_creation_preserves_redo_history() {
+        let mut document = SceneDocumentEditor::new(Scene::new(), 8);
+        let source = document
+            .add_primitive("Character", PrimitiveKind::Cube { size: 1.0 })
+            .unwrap();
+        document.rename_object(source, "Hero").unwrap();
+        assert!(document.undo());
+
+        assert!(document
+            .add_hair_object(
+                "Invalid Hair",
+                source,
+                &[crate::FaceId(999)],
+                crate::HairPreset::ShortHair,
+                crate::HairSettings::short_hair(),
+            )
+            .is_err());
+        assert!(document.can_redo());
+        assert!(document.scene().hair_objects().is_empty());
+        assert_eq!(document.scene().object(source).unwrap().name(), "Character");
+    }
+
 }

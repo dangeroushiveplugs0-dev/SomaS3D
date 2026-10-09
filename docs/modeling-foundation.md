@@ -89,3 +89,11 @@ Only after the core passes these tests should character, physics, FEM, or advanc
 - Extrusion remaps neighboring selections and selects the new cap. Face deletion remaps surviving face/edge selections as topology IDs compact.
 - Tests verify that undo/redo restores geometry and selection together and that rejected commands leave the document unchanged.
 - Selection changes currently use the same snapshot history for simple, deterministic behavior. A future viewport may choose a separate transient selection channel if selection should not consume undo steps.
+
+
+## Connected component selection
+
+- Connected-face selection traverses adjacent faces through manifold edges. It stops at boundaries and non-manifold edges to avoid ambiguous branching.
+- Connected-edge selection traverses edges that share a vertex, producing the complete connected edge component.
+- Both operations add to the current selection and are undoable through the editor history.
+- Tests cover adjacent faces, connected edge loops, and restoring selection through undo/redo.

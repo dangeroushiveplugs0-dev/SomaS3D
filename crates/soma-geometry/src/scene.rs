@@ -200,9 +200,7 @@ impl Scene {
     /// current mesh, ID, name, and transform. Future topology tools can call
     /// this before applying direct mesh edits.
     pub fn make_editable_mesh(&mut self, id: ObjectId) -> Result<(), SceneError> {
-        let object = self
-            .object_mut(id)
-            .ok_or(SceneError::ObjectNotFound(id))?;
+        let object = self.object_mut(id).ok_or(SceneError::ObjectNotFound(id))?;
         let mesh = match &object.geometry {
             ObjectGeometry::Parametric { mesh, .. } => mesh.clone(),
             ObjectGeometry::Mesh(_) => return Ok(()),
@@ -362,7 +360,9 @@ mod tests {
     #[test]
     fn mesh_objects_reject_parametric_updates() {
         let mut scene = Scene::new();
-        let id = scene.add_primitive("Cube", PrimitiveKind::Cube { size: 1.0 }).unwrap();
+        let id = scene
+            .add_primitive("Cube", PrimitiveKind::Cube { size: 1.0 })
+            .unwrap();
         scene.make_editable_mesh(id).unwrap();
         assert_eq!(
             scene.update_primitive(id, PrimitiveKind::Cube { size: 3.0 }),

@@ -311,7 +311,10 @@ mod tests {
         assert_eq!(mesh.face_count(), 1);
         assert_eq!(mesh.edge_count(), 4);
         assert_eq!(remap.faces.get(&second), Some(&FaceId(0)));
-        assert_eq!(mesh.uv_layer("UVMap").unwrap().get(FaceId(0), 2), Some(Uv::new(12.0, 1.0)));
+        assert_eq!(
+            mesh.uv_layer("UVMap").unwrap().get(FaceId(0), 2),
+            Some(Uv::new(12.0, 1.0))
+        );
         assert_eq!(mesh.edge(mesh.edge_between(b, c).unwrap()).unwrap().seam, true);
         assert!(mesh.validate_topology().is_empty());
         mesh.validate_uv_layer("UVMap").unwrap();
@@ -325,10 +328,12 @@ mod tests {
         let c = mesh.add_vertex([0.0, 1.0, 0.0]);
         mesh.add_face(&[a, b, c]).unwrap();
 
-        assert_eq!(mesh.remove_face(FaceId(99)), Err(MeshError::FaceNotFound(FaceId(99))));
+        assert_eq!(
+            mesh.remove_face(FaceId(99)),
+            Err(MeshError::FaceNotFound(FaceId(99)))
+        );
         assert_eq!(mesh.face_count(), 1);
         assert_eq!(mesh.edge_count(), 3);
         assert!(mesh.validate_topology().is_empty());
     }
-
 }

@@ -3,7 +3,7 @@
 //! Primitive generation is separate from interactive UI state so the same
 //! validated builders can be used by the viewport, importers, and future presets.
 
-use crate::{Mesh, MeshError, VertexId};
+use crate::{Mesh, MeshError, Uv, VertexId};
 use std::f32::consts::PI;
 
 /// Supported starter primitives. Dimensions are full extents, not half-extents.
@@ -60,15 +60,27 @@ pub fn generate_primitive(kind: PrimitiveKind) -> Result<Mesh, PrimitiveError> {
                 mesh.add_vertex([h, h, h]),
                 mesh.add_vertex([-h, h, h]),
             ];
-            for face in [
+            let face_uvs = [
+                [Uv::new(0.0, 0.0), Uv::new(1.0, 0.0), Uv::new(1.0, 1.0), Uv::new(0.0, 1.0)],
+                [Uv::new(0.0, 0.0), Uv::new(1.0, 0.0), Uv::new(1.0, 1.0), Uv::new(0.0, 1.0)],
+                [Uv::new(0.0, 0.0), Uv::new(1.0, 0.0), Uv::new(1.0, 1.0), Uv::new(0.0, 1.0)],
+                [Uv::new(0.0, 0.0), Uv::new(1.0, 0.0), Uv::new(1.0, 1.0), Uv::new(0.0, 1.0)],
+                [Uv::new(0.0, 0.0), Uv::new(1.0, 0.0), Uv::new(1.0, 1.0), Uv::new(0.0, 1.0)],
+                [Uv::new(0.0, 0.0), Uv::new(1.0, 0.0), Uv::new(1.0, 1.0), Uv::new(0.0, 1.0)],
+            ];
+            for (face, uvs) in [
                 [vertices[0], vertices[3], vertices[2], vertices[1]],
                 [vertices[4], vertices[5], vertices[6], vertices[7]],
                 [vertices[0], vertices[1], vertices[5], vertices[4]],
                 [vertices[3], vertices[7], vertices[6], vertices[2]],
                 [vertices[0], vertices[4], vertices[7], vertices[3]],
                 [vertices[1], vertices[2], vertices[6], vertices[5]],
-            ] {
-                mesh.add_face(&face)?;
+            ]
+            .into_iter()
+            .zip(face_uvs)
+            {
+                let face_id = mesh.add_face(&face)?;
+                set_face_uvs(&mut mesh, face_id, &uvs)?;
             }
             Ok(mesh)
         }
@@ -82,7 +94,17 @@ pub fn generate_primitive(kind: PrimitiveKind) -> Result<Mesh, PrimitiveError> {
             let b = mesh.add_vertex([x, 0.0, -z]);
             let c = mesh.add_vertex([x, 0.0, z]);
             let d = mesh.add_vertex([-x, 0.0, z]);
-            mesh.add_face(&[a, d, c, b])?;
+            let face = mesh.add_face(&[a, d, c, b])?;
+            set_face_uvs(
+                &mut mesh,
+                face,
+                &[
+                    Uv::new(0.0, 0.0),
+                    Uv::new(0.0, 1.0),
+                    Uv::new(1.0, 1.0),
+                    Uv::new(1.0, 0.0),
+                ],
+            )?;
             Ok(mesh)
         }
         PrimitiveKind::UvSphere {
@@ -120,7 +142,18 @@ pub fn generate_primitive(kind: PrimitiveKind) -> Result<Mesh, PrimitiveError> {
             let first = &latitude_rings[0];
             for segment in 0..segments as usize {
                 let next = (segment + 1) % segments as usize;
-                mesh.add_face(&[north, first[next], first[segment]])?;
+                let face = mesh.add_face(&[north, first[next], first[segment]])?;
+                let u0 = segment as f32 / segments as f32;
+                let u1 = (segment + 1) as f32 / segments as f32;
+                set_face_uvs(
+                    &mut mesh,
+                    face,
+                    &[
+                        Uv::new((u0 + u1) * 0.5, 1.0),
+                        Uv::new(u1, 1.0 - 1.0 / rings as f32),
+                        Uv::new(u0, 1.0 - 1.0 / rings as f32),
+                    ],
+                )?;
             }
 
             for ring in 0..latitude_rings.len().saturating_sub(1) {
@@ -128,7 +161,22 @@ pub fn generate_primitive(kind: PrimitiveKind) -> Result<Mesh, PrimitiveError> {
                 let lower = &latitude_rings[ring + 1];
                 for segment in 0..segments as usize {
                     let next = (segment + 1) % segments as usize;
-                    mesh.add_face(&[upper[segment], upper[next], lower[next], lower[segment]])?;
+                    let face =
+                        mesh.add_face(&[upper[segment], upper[next], lower[next], lower[segment]])?;
+                    let u0 = segment as f32 / segments as f32;
+                    let u1 = (segment + 1) as f32 / segments as f32;
+                    let upper_v = 1.0 - (ring + 1) as f32 / rings as f32;
+                    let lower_v = 1.0 - (ring + 2) as f32 / rings as f32;
+                    set_face_uvs(
+                        &mut mesh,
+                        face,
+                        &[
+                            Uv::new(u0, upper_v),
+                            Uv::new(u1, upper_v),
+                            Uv::new(u1, lower_v),
+                            Uv::new(u0, lower_v),
+                        ],
+                    )?;
                 }
             }
 
@@ -137,11 +185,34 @@ pub fn generate_primitive(kind: PrimitiveKind) -> Result<Mesh, PrimitiveError> {
                 .expect("rings >= 2 creates a latitude ring");
             for segment in 0..segments as usize {
                 let next = (segment + 1) % segments as usize;
-                mesh.add_face(&[last[segment], last[next], south])?;
+                let face = mesh.add_face(&[last[segment], last[next], south])?;
+                let u0 = segment as f32 / segments as f32;
+                let u1 = (segment + 1) as f32 / segments as f32;
+                let v = 1.0 / rings as f32;
+                set_face_uvs(
+                    &mut mesh,
+                    face,
+                    &[
+                        Uv::new(u0, v),
+                        Uv::new(u1, v),
+                        Uv::new((u0 + u1) * 0.5, 0.0),
+                    ],
+                )?;
             }
             Ok(mesh)
         }
     }
+}
+
+fn set_face_uvs(
+    mesh: &mut Mesh,
+    face: crate::FaceId,
+    uvs: &[Uv],
+) -> Result<(), PrimitiveError> {
+    for (corner, uv) in uvs.iter().copied().enumerate() {
+        mesh.set_uv("UVMap", face, corner, uv)?;
+    }
+    Ok(())
 }
 
 fn validate_dimension(value: f32) -> Result<(), PrimitiveError> {
@@ -165,6 +236,7 @@ mod tests {
         assert_eq!(mesh.edge_count(), 12);
         assert_eq!(mesh.face_count(), 6);
         assert!(mesh.validate_topology().is_empty());
+        mesh.validate_uv_layer("UVMap").unwrap();
     }
 
     #[test]
@@ -179,6 +251,7 @@ mod tests {
         assert_eq!(mesh.face_count(), 1);
         assert_eq!(mesh.vertex_position(VertexId(0)), Some([-2.0, 0.0, -1.0]));
         assert!(mesh.validate_topology().is_empty());
+        mesh.validate_uv_layer("UVMap").unwrap();
     }
 
     #[test]
@@ -193,6 +266,7 @@ mod tests {
         assert_eq!(mesh.face_count(), 12 * 6);
         assert!(mesh.validate_topology().is_empty());
         assert_eq!(mesh.edge_count(), 12 * (2 * 6 - 1));
+        mesh.validate_uv_layer("UVMap").unwrap();
     }
 
     #[test]

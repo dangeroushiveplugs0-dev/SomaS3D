@@ -132,7 +132,8 @@ impl SceneDocumentEditor {
         id: ObjectId,
         kind: PrimitiveKind,
     ) -> Result<(), DocumentEditError> {
-        self.history.apply(|scene| scene.update_primitive(id, kind))?;
+        self.history
+            .apply(|scene| scene.update_primitive(id, kind))?;
         Ok(())
     }
 }
@@ -163,7 +164,9 @@ mod tests {
     #[test]
     fn undo_redo_restores_rename_and_transform() {
         let mut document = SceneDocumentEditor::new(Scene::new(), 8);
-        let id = document.add_primitive("Cube", PrimitiveKind::Cube { size: 1.0 }).unwrap();
+        let id = document
+            .add_primitive("Cube", PrimitiveKind::Cube { size: 1.0 })
+            .unwrap();
         let transform = Transform3D {
             translation: [3.0, 2.0, 1.0],
             ..Transform3D::default()
@@ -174,7 +177,10 @@ mod tests {
         assert_eq!(document.scene().object(id).unwrap().transform(), transform);
 
         assert!(document.undo());
-        assert_eq!(document.scene().object(id).unwrap().transform(), Transform3D::default());
+        assert_eq!(
+            document.scene().object(id).unwrap().transform(),
+            Transform3D::default()
+        );
         assert!(document.undo());
         assert_eq!(document.scene().object(id).unwrap().name(), "Cube");
         assert!(document.redo());
@@ -195,7 +201,9 @@ mod tests {
             .vertex_position(crate::VertexId(0));
 
         document
-            .edit_mesh(id, |mesh| mesh.translate_vertices(&[crate::VertexId(0)], [2.0, 0.0, 0.0]))
+            .edit_mesh(id, |mesh| {
+                mesh.translate_vertices(&[crate::VertexId(0)], [2.0, 0.0, 0.0])
+            })
             .unwrap();
         assert!(!document.scene().object(id).unwrap().is_parametric());
         assert_ne!(
@@ -235,7 +243,9 @@ mod tests {
     #[test]
     fn failed_mesh_edit_keeps_scene_and_redo_history_unchanged() {
         let mut document = SceneDocumentEditor::new(Scene::new(), 8);
-        let id = document.add_primitive("Cube", PrimitiveKind::Cube { size: 1.0 }).unwrap();
+        let id = document
+            .add_primitive("Cube", PrimitiveKind::Cube { size: 1.0 })
+            .unwrap();
         document.rename_object(id, "Hero").unwrap();
         assert!(document.undo());
         let before = document
@@ -266,13 +276,17 @@ mod tests {
     #[test]
     fn failed_command_preserves_document_and_redo_history() {
         let mut document = SceneDocumentEditor::new(Scene::new(), 8);
-        let id = document.add_primitive("Cube", PrimitiveKind::Cube { size: 1.0 }).unwrap();
+        let id = document
+            .add_primitive("Cube", PrimitiveKind::Cube { size: 1.0 })
+            .unwrap();
         document.rename_object(id, "Hero").unwrap();
         assert!(document.undo());
 
         assert_eq!(
             document.rename_object(ObjectId(999), "Missing"),
-            Err(DocumentEditError::Scene(SceneError::ObjectNotFound(ObjectId(999))))
+            Err(DocumentEditError::Scene(SceneError::ObjectNotFound(
+                ObjectId(999)
+            )))
         );
         assert_eq!(document.scene().object(id).unwrap().name(), "Cube");
         assert!(document.can_redo());

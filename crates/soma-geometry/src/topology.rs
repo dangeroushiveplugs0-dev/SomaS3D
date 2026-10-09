@@ -38,6 +38,8 @@ pub enum MeshError {
     EmptyFace,
     FaceTooSmall,
     InvalidVertex(VertexId),
+    NonFinitePosition,
+    DuplicateVertexUpdate(VertexId),
     DuplicateVertexInFace(VertexId),
     FaceNotFound(FaceId),
     EdgeNotFound(EdgeId),
@@ -257,6 +259,61 @@ impl Mesh {
         }
 
         issues
+    }
+
+    /// Updates multiple vertex positions as one validated operation.
+    ///
+    /// Every ID and coordinate is checked before any vertex is changed. Duplicate
+    /// IDs are rejected so a caller cannot accidentally apply conflicting edits.
+    pub fn set_vertex_positions(
+        &mut self,
+        updates: &[(VertexId, [f32; 3])],
+    ) -> Result<(), MeshError> {
+        let mut seen = std::collections::HashSet::with_capacity(updates.len());
+
+        for &(id, position) in updates {
+            if self.vertices.get(id.0 as usize).is_none() {
+                return Err(MeshError::InvalidVertex(id));
+            }
+            if !seen.insert(id) {
+                return Err(MeshError::DuplicateVertexUpdate(id));
+            }
+            if !position.iter().all(|component| component.is_finite()) {
+                return Err(MeshError::NonFinitePosition);
+            }
+        }
+
+        for &(id, position) in updates {
+            self.vertices[id.0 as usize].position = position;
+        }
+        Ok(())
+    }
+
+    /// Translates a set of vertices atomically by the supplied finite offset.
+    pub fn translate_vertices(
+        &mut self,
+        vertices: &[VertexId],
+        delta: [f32; 3],
+    ) -> Result<(), MeshError> {
+        if !delta.iter().all(|component| component.is_finite()) {
+            return Err(MeshError::NonFinitePosition);
+        }
+
+        let mut updates = Vec::with_capacity(vertices.len());
+        for &id in vertices {
+            let position = self
+                .vertex_position(id)
+                .ok_or(MeshError::InvalidVertex(id))?;
+            updates.push((
+                id,
+                [
+                    position[0] + delta[0],
+                    position[1] + delta[1],
+                    position[2] + delta[2],
+                ],
+            ));
+        }
+        self.set_vertex_positions(&updates)
     }
 
     pub fn add_vertex(&mut self, position: [f32; 3]) -> VertexId {

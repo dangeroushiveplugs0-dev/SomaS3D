@@ -14,6 +14,67 @@ pub struct CornerId {
     pub index: u32,
 }
 
+/// Translation, Euler rotation (radians), and scale around a shared pivot.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Transform3D {
+    pub translation: [f32; 3],
+    pub rotation: [f32; 3],
+    pub scale: [f32; 3],
+    pub pivot: [f32; 3],
+}
+
+impl Default for Transform3D {
+    fn default() -> Self {
+        Self {
+            translation: [0.0; 3],
+            rotation: [0.0; 3],
+            scale: [1.0; 3],
+            pivot: [0.0; 3],
+        }
+    }
+}
+
+impl Transform3D {
+    pub fn apply(self, position: [f32; 3]) -> Result<[f32; 3], MeshError> {
+        if !position
+            .iter()
+            .chain(self.translation.iter())
+            .chain(self.rotation.iter())
+            .chain(self.scale.iter())
+            .chain(self.pivot.iter())
+            .all(|value| value.is_finite())
+        {
+            return Err(MeshError::NonFinitePosition);
+        }
+
+        let mut p = [
+            (position[0] - self.pivot[0]) * self.scale[0],
+            (position[1] - self.pivot[1]) * self.scale[1],
+            (position[2] - self.pivot[2]) * self.scale[2],
+        ];
+
+        // Apply rotations in X, then Y, then Z order.
+        let (sx, cx) = self.rotation[0].sin_cos();
+        let (sy, cy) = self.rotation[1].sin_cos();
+        let (sz, cz) = self.rotation[2].sin_cos();
+
+        p = [p[0], p[1] * cx - p[2] * sx, p[1] * sx + p[2] * cx];
+        p = [p[0] * cy + p[2] * sy, p[1], -p[0] * sy + p[2] * cy];
+        p = [p[0] * cz - p[1] * sz, p[0] * sz + p[1] * cz, p[2]];
+
+        let result = [
+            p[0] + self.pivot[0] + self.translation[0],
+            p[1] + self.pivot[1] + self.translation[1],
+            p[2] + self.pivot[2] + self.translation[2],
+        ];
+        if result.iter().all(|value| value.is_finite()) {
+            Ok(result)
+        } else {
+            Err(MeshError::NonFinitePosition)
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Vertex {
     pub position: [f32; 3],
@@ -294,6 +355,26 @@ impl Mesh {
             self.vertices[id.0 as usize].position = position;
         }
         Ok(())
+    }
+
+    /// Applies a shared transform to selected vertices atomically.
+    ///
+    /// The transform order is scale, X/Y/Z Euler rotation, then translation,
+    /// all relative to the supplied pivot. This is a geometry primitive for
+    /// future viewport move/rotate/scale gizmos; it does not manage UI state.
+    pub fn transform_vertices(
+        &mut self,
+        vertices: &[VertexId],
+        transform: Transform3D,
+    ) -> Result<(), MeshError> {
+        let mut updates = Vec::with_capacity(vertices.len());
+        for &id in vertices {
+            let position = self
+                .vertex_position(id)
+                .ok_or(MeshError::InvalidVertex(id))?;
+            updates.push((id, transform.apply(position)?));
+        }
+        self.set_vertex_positions(&updates)
     }
 
     /// Translates a set of vertices atomically by the supplied finite offset.

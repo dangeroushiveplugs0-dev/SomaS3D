@@ -1,5 +1,7 @@
+use std::collections::{HashSet, VecDeque};
+
 use crate::{
-    EditHistory, FaceId, Mesh, MeshError, Selection, SelectionMode, Transform3D, VertexId,
+    EditHistory, EdgeId, FaceId, Mesh, MeshError, Selection, SelectionMode, Transform3D, VertexId,
 };
 
 /// Mesh and component selection form one undoable editor state.
@@ -38,6 +40,7 @@ pub enum EditorError {
     EmptyVertexSelection,
     EmptyFaceSelection,
     ExtrusionRequiresSingleFace,
+    EdgeNotFound(EdgeId),
 }
 
 impl From<MeshError> for EditorError {
@@ -103,6 +106,81 @@ impl ModelingEditor {
             state.selection.clear();
             Ok::<_, EditorError>(())
         });
+    }
+
+    /// Selects the manifold-connected face component containing `seed`.
+    ///
+    /// Traversal stops at boundaries and non-manifold edges, avoiding ambiguous
+    /// jumps between more than two incident faces.
+    pub fn select_connected_faces(&mut self, seed: FaceId) -> Result<usize, EditorError> {
+        if self.state().mesh.face(seed).is_none() {
+            return Err(MeshError::FaceNotFound(seed).into());
+        }
+        self.history.apply(|state| {
+            let mut visited = HashSet::new();
+            let mut queue = VecDeque::from([seed]);
+            while let Some(face_id) = queue.pop_front() {
+                if !visited.insert(face_id) {
+                    continue;
+                }
+                let face = state.mesh.face(face_id).expect("queued face was validated");
+                for index in 0..face.vertices.len() {
+                    let a = face.vertices[index];
+                    let b = face.vertices[(index + 1) % face.vertices.len()];
+                    let Some(edge_id) = state.mesh.edge_between(a, b) else {
+                        continue;
+                    };
+                    let Some(edge) = state.mesh.edge(edge_id) else {
+                        continue;
+                    };
+                    if edge.faces.len() == 2 {
+                        for &neighbor in &edge.faces {
+                            if !visited.contains(&neighbor) {
+                                queue.push_back(neighbor);
+                            }
+                        }
+                    }
+                }
+            }
+            for face in &visited {
+                state.selection.select_face(*face);
+            }
+            Ok(visited.len())
+        })
+    }
+
+    /// Selects the edge component connected to `seed` through shared vertices.
+    pub fn select_connected_edges(&mut self, seed: EdgeId) -> Result<usize, EditorError> {
+        if self.state().mesh.edge(seed).is_none() {
+            return Err(EditorError::EdgeNotFound(seed));
+        }
+        self.history.apply(|state| {
+            let mut visited = HashSet::new();
+            let mut queue = VecDeque::from([seed]);
+            while let Some(edge_id) = queue.pop_front() {
+                if !visited.insert(edge_id) {
+                    continue;
+                }
+                let edge = state.mesh.edge(edge_id).expect("queued edge was validated");
+                let endpoints = edge.vertices;
+                for index in 0..state.mesh.edge_count() {
+                    let candidate = EdgeId(index as u32);
+                    if visited.contains(&candidate) {
+                        continue;
+                    }
+                    let Some(other) = state.mesh.edge(candidate) else {
+                        continue;
+                    };
+                    if endpoints.iter().any(|vertex| other.vertices.contains(vertex)) {
+                        queue.push_back(candidate);
+                    }
+                }
+            }
+            for edge in &visited {
+                state.selection.select_edge(*edge);
+            }
+            Ok(visited.len())
+        })
     }
 
     /// Applies move/rotate/scale to the selected vertices as one undoable edit.
@@ -194,6 +272,39 @@ mod tests {
             mesh.set_uv("UVMap", face, corner, uv).unwrap();
         }
         (mesh, face, [a, b, c, d])
+    }
+
+    #[test]
+    fn connected_face_selection_stops_at_non_manifold_edges_and_is_undoable() {
+        let mut mesh = Mesh::new();
+        let a = mesh.add_vertex([0.0, 0.0, 0.0]);
+        let b = mesh.add_vertex([1.0, 0.0, 0.0]);
+        let c = mesh.add_vertex([1.0, 1.0, 0.0]);
+        let d = mesh.add_vertex([0.0, 1.0, 0.0]);
+        let e = mesh.add_vertex([2.0, 0.0, 0.0]);
+        let f = mesh.add_vertex([2.0, 1.0, 0.0]);
+        let left = mesh.add_face(&[a, b, c, d]).unwrap();
+        let right = mesh.add_face(&[b, e, f, c]).unwrap();
+        let mut editor = ModelingEditor::new(mesh, 10);
+
+        assert_eq!(editor.select_connected_faces(left).unwrap(), 2);
+        assert_eq!(
+            editor.state().selection().faces().collect::<Vec<_>>(),
+            vec![left, right]
+        );
+        assert!(editor.undo());
+        assert!(editor.state().selection().is_empty());
+        assert!(editor.redo());
+        assert_eq!(editor.state().selection().faces().count(), 2);
+    }
+
+    #[test]
+    fn connected_edge_selection_follows_shared_vertices() {
+        let (mesh, _, _) = quad();
+        let mut editor = ModelingEditor::new(mesh, 10);
+        let seed = editor.state().mesh.edge_between(VertexId(0), VertexId(1)).unwrap();
+        assert_eq!(editor.select_connected_edges(seed).unwrap(), 4);
+        assert_eq!(editor.state().selection().edges().count(), 4);
     }
 
     #[test]

@@ -391,4 +391,116 @@ mod tests {
         assert_eq!(editor.state().mesh.face_count(), 1);
         assert!(editor.state().selection().contains_face(face));
     }
+
+    #[test]
+    fn deleting_multiple_faces_preserves_survivor_uvs_seams_and_valid_topology() {
+        let mut mesh = Mesh::new();
+        let mut quads = Vec::new();
+        let mut rightmost_vertices = [VertexId(0); 4];
+
+        for x in 0..3 {
+            let a = mesh.add_vertex([x as f32, 0.0, 0.0]);
+            let b = mesh.add_vertex([x as f32 + 1.0, 0.0, 0.0]);
+            let c = mesh.add_vertex([x as f32 + 1.0, 1.0, 0.0]);
+            let d = mesh.add_vertex([x as f32, 1.0, 0.0]);
+            let face = mesh.add_face(&[a, b, c, d]).unwrap();
+            for corner in 0..4 {
+                mesh.set_uv(
+                    "UVMap",
+                    face,
+                    corner,
+                    Uv::new(x as f32 * 10.0 + corner as f32, x as f32 + corner as f32),
+                )
+                .unwrap();
+            }
+            quads.push(face);
+            if x == 2 {
+                rightmost_vertices = [a, b, c, d];
+            }
+        }
+
+        let preserved_uvs: Vec<_> = (0..4)
+            .map(|corner| mesh.uv_layer("UVMap").unwrap().get(quads[2], corner).unwrap())
+            .collect();
+        let preserved_edge = mesh
+            .edge_between(rightmost_vertices[0], rightmost_vertices[1])
+            .unwrap();
+        mesh.set_edge_seam(preserved_edge, true).unwrap();
+
+        let mut editor = ModelingEditor::new(mesh, 20);
+        editor.select_face(quads[0]).unwrap();
+        editor.select_face(quads[1]).unwrap();
+        editor.delete_selected_faces().unwrap();
+
+        let surviving_face = FaceId(0);
+        assert_eq!(editor.state().mesh.face_count(), 1);
+        assert_eq!(
+            editor.state().mesh.face(surviving_face).unwrap().vertices,
+            rightmost_vertices
+        );
+        for (corner, expected) in preserved_uvs.iter().enumerate() {
+            assert_eq!(
+                editor.state().mesh.uv_layer("UVMap").unwrap().get(surviving_face, corner),
+                Some(*expected)
+            );
+        }
+        let surviving_edge = editor
+            .state()
+            .mesh
+            .edge_between(rightmost_vertices[0], rightmost_vertices[1])
+            .unwrap();
+        assert!(editor.state().mesh.edge(surviving_edge).unwrap().seam);
+        assert!(editor.state().mesh.validate_topology().is_empty());
+
+        assert!(editor.undo());
+        assert_eq!(editor.state().mesh.face_count(), 3);
+        assert!(editor.state().mesh.validate_topology().is_empty());
+        assert!(editor.redo());
+        assert_eq!(editor.state().mesh.face_count(), 1);
+        assert!(editor.state().mesh.validate_topology().is_empty());
+    }
+
+    #[test]
+    fn connected_face_selection_does_not_cross_a_three_face_non_manifold_edge() {
+        let mut mesh = Mesh::new();
+        let a = mesh.add_vertex([0.0, 0.0, 0.0]);
+        let b = mesh.add_vertex([1.0, 0.0, 0.0]);
+        let upper = mesh.add_vertex([0.5, 1.0, 0.0]);
+        let lower_left = mesh.add_vertex([0.5, -1.0, 0.0]);
+        let lower_right = mesh.add_vertex([0.5, 0.0, 1.0]);
+        let first = mesh.add_face(&[a, b, upper]).unwrap();
+        mesh.add_face(&[b, a, lower_left]).unwrap();
+        mesh.add_face(&[a, b, lower_right]).unwrap();
+
+        let mut editor = ModelingEditor::new(mesh, 10);
+        assert_eq!(editor.select_connected_faces(first).unwrap(), 1);
+        assert_eq!(editor.state().selection().faces().collect::<Vec<_>>(), vec![first]);
+        assert_eq!(editor.state().mesh.validate_topology().len(), 1);
+    }
+
+    #[test]
+    fn repeated_extrusion_and_undo_redo_keep_topology_valid() {
+        let (mesh, initial_face, _) = quad();
+        let mut editor = ModelingEditor::new(mesh, 32);
+        editor.select_face(initial_face).unwrap();
+
+        for step in 0..8 {
+            editor
+                .extrude_selected_face([0.0, 0.0, 0.25 + step as f32 * 0.01])
+                .unwrap();
+            assert!(editor.state().mesh.validate_topology().is_empty());
+            assert_eq!(editor.state().selection().faces().count(), 1);
+        }
+
+        for _ in 0..8 {
+            assert!(editor.undo());
+            assert!(editor.state().mesh.validate_topology().is_empty());
+        }
+        assert_eq!(editor.state().mesh.face_count(), 1);
+        for _ in 0..8 {
+            assert!(editor.redo());
+            assert!(editor.state().mesh.validate_topology().is_empty());
+        }
+        assert_eq!(editor.state().mesh.face_count(), 33);
+    }
 }

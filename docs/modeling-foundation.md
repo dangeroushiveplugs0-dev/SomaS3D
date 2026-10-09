@@ -97,3 +97,39 @@ Only after the core passes these tests should character, physics, FEM, or advanc
 - Connected-edge selection traverses edges that share a vertex, producing the complete connected edge component.
 - Both operations add to the current selection and are undoable through the editor history.
 - Tests cover adjacent faces, connected edge loops, and restoring selection through undo/redo.
+
+## Primitive system and procedural hair (planned)
+
+Primitives should be first-class modeling objects, not just a fixed menu of cube/sphere meshes. Standard geometric primitives can be added alongside specialized procedural primitives such as hair. Hair is generated from selected surface faces, so the user can select a scalp, armpit, or other growth region and choose a hair preset.
+
+### Hair creation workflow
+
+1. Select one or more faces on the target surface.
+2. Choose **Hair**, then choose **Flowing Hair** or **Short Hair** (the latter is the short, dense preset intended for body hair).
+3. Open a movable floating tool panel with live controls and a close/dock action. Closing the floating panel docks it into the normal SomaS3D tool panel; it must not discard the current hair settings.
+4. Preview changes before committing the generated hair, and allow the user to reopen the panel to edit the hair object later.
+
+### Shared controls
+
+- **Length:** maximum strand length, with a much larger supported range for Flowing Hair and a deliberately short range for Short Hair.
+- **Curl:** controls strand curvature.
+- **Color:** hair color, independent from the surface material.
+- **Gravity:** a normalized slider, not a raw numeric field. Low values bias strands upward; high values bend them downward. Strand roots remain attached to the selected surface.
+- **Seed:** a deterministic random seed so the same settings can be regenerated consistently.
+- **Density / Amount:** available for Short Hair, controlling strand count over the selected area. A sensible preset is the default; users can reduce or increase it within device-safe limits.
+
+### Performance and rigging strategy
+
+Do not create and independently draw a heavy, fully segmented mesh for every strand. Keep a compact procedural description and a limited set of guide curves, derive nearby strands from those guides, and render hair in batched strand/ribbon or clump geometry. This retains a controllable root and strand identity for future rigging while reducing per-strand object and draw-call overhead.
+
+The proposed merge ratios are optimization targets, not a guarantee that arbitrary strands can be fused without visual loss: for Short Hair, group roughly two strands per clump; for Flowing Hair, group up to four strands per render clump. Preserve the underlying guide strands and stable root data so clumps can still follow skin deformation. Build clumps in batches and use level-of-detail limits on mobile rather than destructively merging the authored strands. Users should be able to choose a lower-density preview and a higher-quality final render.
+
+### Safety and correctness rules
+
+- Growth roots must remain on the selected faces and orient from their surface normals, with optional root direction and combing added later.
+- Hair generation must be deterministic for a given mesh, face selection, and settings.
+- A generation preview should be cancellable and should not mutate the base mesh until committed.
+- Hair should be stored as its own editable procedural object linked to the source surface, not baked irreversibly into the body's topology. This keeps styling, recoloring, density changes, and later rig binding possible.
+- Short Hair should use a clamped, explicitly documented length range; the exact limits should be tuned with real viewport testing rather than guessed now.
+- Floating/docked panel behavior belongs to the future editor UI layer; this geometry repository documents the interaction contract but does not claim to implement that UI yet.
+

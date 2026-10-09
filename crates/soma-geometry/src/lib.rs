@@ -1,14 +1,14 @@
 //! Platform-independent geometry primitives for SomaS3D.
 
+mod history;
 mod material;
 mod material_eval;
-mod history;
 mod selection;
 mod topology;
 mod uv;
 
-pub use material::{Material, MaterialSemantics, PbrMaterial};
 pub use history::EditHistory;
+pub use material::{Material, MaterialSemantics, PbrMaterial};
 pub use material_eval::{evaluate, EvaluatedPbr};
 pub use selection::{Selection, SelectionMode};
 pub use topology::{

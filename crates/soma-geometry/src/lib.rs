@@ -10,8 +10,8 @@ pub use material::{Material, MaterialSemantics, PbrMaterial};
 pub use material_eval::{evaluate, EvaluatedPbr};
 pub use selection::{Selection, SelectionMode};
 pub use topology::{
-    CornerId, Edge, EdgeId, Face, FaceId, Mesh, MeshError, TopologyIssue, TopologyRemap, Transform3D, Vertex,
-    VertexId,
+    CornerId, Edge, EdgeId, Face, FaceId, Mesh, MeshError, TopologyIssue, TopologyRemap,
+    Transform3D, Vertex, VertexId,
 };
 pub use uv::{Uv, UvCorner, UvError, UvIsland, UvLayer, UvTransform};
 

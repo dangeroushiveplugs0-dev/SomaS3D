@@ -50,15 +50,42 @@ pub enum MeshError {
 pub enum TopologyIssue {
     NonFiniteVertexPosition(VertexId),
     FaceTooSmall(FaceId),
-    InvalidVertexReference { face: FaceId, vertex: VertexId },
-    DuplicateVertexInFace { face: FaceId, vertex: VertexId },
-    MissingEdgeForFace { face: FaceId, a: VertexId, b: VertexId },
-    InvalidEdgeEndpoint { edge: EdgeId, vertex: VertexId },
-    DuplicateEdge { edge: EdgeId, other: EdgeId },
-    EdgeLookupMismatch { edge: EdgeId },
-    InvalidEdgeFaceReference { edge: EdgeId, face: FaceId },
-    EdgeFaceMismatch { edge: EdgeId, face: FaceId },
-    NonManifoldEdge { edge: EdgeId, incident_faces: usize },
+    InvalidVertexReference {
+        face: FaceId,
+        vertex: VertexId,
+    },
+    DuplicateVertexInFace {
+        face: FaceId,
+        vertex: VertexId,
+    },
+    MissingEdgeForFace {
+        face: FaceId,
+        a: VertexId,
+        b: VertexId,
+    },
+    InvalidEdgeEndpoint {
+        edge: EdgeId,
+        vertex: VertexId,
+    },
+    DuplicateEdge {
+        edge: EdgeId,
+        other: EdgeId,
+    },
+    EdgeLookupMismatch {
+        edge: EdgeId,
+    },
+    InvalidEdgeFaceReference {
+        edge: EdgeId,
+        face: FaceId,
+    },
+    EdgeFaceMismatch {
+        edge: EdgeId,
+        face: FaceId,
+    },
+    NonManifoldEdge {
+        edge: EdgeId,
+        incident_faces: usize,
+    },
 }
 
 #[derive(Debug, Default)]
@@ -95,8 +122,14 @@ impl Mesh {
         let mut issues = Vec::new();
 
         for (index, vertex) in self.vertices.iter().enumerate() {
-            if !vertex.position.iter().all(|component| component.is_finite()) {
-                issues.push(TopologyIssue::NonFiniteVertexPosition(VertexId(index as u32)));
+            if !vertex
+                .position
+                .iter()
+                .all(|component| component.is_finite())
+            {
+                issues.push(TopologyIssue::NonFiniteVertexPosition(VertexId(
+                    index as u32,
+                )));
             }
         }
 

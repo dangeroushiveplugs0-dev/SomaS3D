@@ -362,6 +362,7 @@ mod tests {
         assert_eq!(mesh.edge(shared_original_edge).unwrap().faces.len(), 2);
         assert_eq!(mesh.face_count(), 6);
         assert_eq!(result.side_faces.len(), 4);
+        assert_eq!(result.topology_remap.faces.get(&FaceId(1)), Some(&FaceId(0)));
         assert!(mesh.validate_topology().is_empty());
     }
 

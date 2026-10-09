@@ -1,7 +1,8 @@
 use std::collections::{HashSet, VecDeque};
 
 use crate::{
-    EdgeId, EditHistory, FaceId, Mesh, MeshError, Selection, SelectionMode, Transform3D, VertexId,
+    EdgeId, EditHistory, FaceId, Mesh, MeshError, Selection, SelectionMode, Transform3D, UvCorner,
+    UvTransform, VertexId,
 };
 
 /// Mesh and component selection form one undoable editor state.
@@ -214,6 +215,21 @@ impl ModelingEditor {
         })
     }
 
+    /// Applies a UV transform as one undoable modeling edit.
+    pub fn transform_uv_corners(
+        &mut self,
+        layer_name: &str,
+        corners: &[UvCorner],
+        transform: UvTransform,
+    ) -> Result<(), EditorError> {
+        self.history.apply(|state| {
+            state
+                .mesh
+                .transform_uv_corners(layer_name, corners, transform)?;
+            Ok(())
+        })
+    }
+
     /// Deletes selected faces while remapping edge/face selections after each removal.
     pub fn delete_selected_faces(&mut self) -> Result<(), EditorError> {
         self.history.apply(|state| {
@@ -372,6 +388,100 @@ mod tests {
         assert!(editor.redo());
         assert_eq!(editor.state().mesh.face_count(), original_face_count + 4);
         assert_eq!(editor.state().selection().faces().count(), 1);
+    }
+
+    #[test]
+    fn uv_transforms_share_mesh_undo_and_redo_history() {
+        let (mut mesh, face, _) = quad();
+        for (corner, uv) in [
+            Uv::new(0.0, 0.0),
+            Uv::new(1.0, 0.0),
+            Uv::new(1.0, 1.0),
+            Uv::new(0.0, 1.0),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            mesh.set_uv("UVMap", face, corner, uv).unwrap();
+        }
+
+        let mut editor = ModelingEditor::new(mesh, 10);
+        editor
+            .transform_uv_corners(
+                "UVMap",
+                &[UvCorner { face, corner: 1 }, UvCorner { face, corner: 2 }],
+                UvTransform::Translate {
+                    delta: [0.25, -0.5],
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            editor.state().mesh.uv_layer("UVMap").unwrap().get(face, 1),
+            Some(Uv::new(1.25, -0.5))
+        );
+        assert!(editor.undo());
+        assert_eq!(
+            editor.state().mesh.uv_layer("UVMap").unwrap().get(face, 1),
+            Some(Uv::new(1.0, 0.0))
+        );
+        assert!(editor.redo());
+        assert_eq!(
+            editor.state().mesh.uv_layer("UVMap").unwrap().get(face, 2),
+            Some(Uv::new(1.25, 0.5))
+        );
+    }
+
+    #[test]
+    fn failed_uv_transform_preserves_mesh_and_redo_history() {
+        let (mut mesh, face, _) = quad();
+        for (corner, uv) in [
+            Uv::new(0.0, 0.0),
+            Uv::new(1.0, 0.0),
+            Uv::new(1.0, 1.0),
+            Uv::new(0.0, 1.0),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            mesh.set_uv("UVMap", face, corner, uv).unwrap();
+        }
+
+        let mut editor = ModelingEditor::new(mesh, 10);
+        editor
+            .transform_uv_corners(
+                "UVMap",
+                &[UvCorner { face, corner: 0 }],
+                UvTransform::Translate { delta: [1.0, 0.0] },
+            )
+            .unwrap();
+        assert!(editor.undo());
+        let before = editor
+            .state()
+            .mesh
+            .uv_layer("UVMap")
+            .unwrap()
+            .get(face, 0);
+
+        assert!(matches!(
+            editor.transform_uv_corners(
+                "UVMap",
+                &[UvCorner { face, corner: 99 }],
+                UvTransform::Translate { delta: [2.0, 0.0] },
+            ),
+            Err(EditorError::Mesh(MeshError::Uv(
+                crate::UvError::CornerOutOfRange { .. }
+            )))
+        ));
+        assert_eq!(
+            editor.state().mesh.uv_layer("UVMap").unwrap().get(face, 0),
+            before
+        );
+        assert!(editor.can_redo());
+        assert!(editor.redo());
+        assert_eq!(
+            editor.state().mesh.uv_layer("UVMap").unwrap().get(face, 0),
+            Some(Uv::new(1.0, 0.0))
+        );
     }
 
     #[test]

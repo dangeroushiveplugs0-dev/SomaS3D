@@ -276,3 +276,9 @@ This is a roadmap item, not a claim that spatial drawing, text, effects, or imag
 - Orbit pitch is clamped away from the poles; pan is scaled by vertical field of view, target distance, and viewport height. Invalid gesture values and degenerate camera poses are rejected.
 - These helpers are ready for a UI to call, but no touch controls or visible viewport have been wired up yet.
 
+## Viewport screen rays and mesh picking
+
+- Camera matrices can now generate a normalized world-space ray from a top-left-origin screen pixel by unprojecting the near and far clip points.
+- CPU picking tests that ray against the prepared triangle buffers and returns the nearest mesh hit, including object ID, triangle index, world-space hit point, distance, and barycentric coordinates.
+- Invalid viewport coordinates, singular/non-finite matrices, malformed triangle indices, and triangles behind the ray origin are safely ignored.
+- This makes mesh-surface selection possible for a future UI to call, but does not yet provide touch-event wiring, vertex/edge tolerance picking, hair picking, a GPU renderer, or a visible application viewport.

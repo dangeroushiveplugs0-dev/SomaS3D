@@ -80,3 +80,12 @@ Only after the core passes these tests should character, physics, FEM, or advanc
 - Edits run against a cloned candidate and commit only when the operation returns success. Failed edits leave current state and both history stacks untouched; a successful new edit clears redo history.
 - The history limit bounds the number of snapshots, and a zero limit disables undo storage while still applying edits.
 - This is the correctness-first foundation. Large meshes may make full snapshots expensive, so operation-specific deltas or copy-on-write storage should be introduced after measuring actual workloads. Viewport input, drag previews, and app-level persistence still need integration.
+
+
+## Editor command integration
+
+- `ModelingEditor` owns a combined `EditorState` containing the mesh and component selection, coordinated through `EditHistory`.
+- Selected-vertex transforms, selected-face deletion, and single-face extrusion run transactionally and can be undone/redone.
+- Extrusion remaps neighboring selections and selects the new cap. Face deletion remaps surviving face/edge selections as topology IDs compact.
+- Tests verify that undo/redo restores geometry and selection together and that rejected commands leave the document unchanged.
+- Selection changes currently use the same snapshot history for simple, deterministic behavior. A future viewport may choose a separate transient selection channel if selection should not consume undo steps.

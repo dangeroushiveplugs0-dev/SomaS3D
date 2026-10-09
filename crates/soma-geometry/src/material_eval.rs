@@ -1,4 +1,4 @@
-use super::{Material, PbrMaterial};
+use super::Material;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct EvaluatedPbr {

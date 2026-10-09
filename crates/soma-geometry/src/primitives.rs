@@ -108,7 +108,7 @@ pub fn generate_primitive(kind: PrimitiveKind) -> Result<Mesh, PrimitiveError> {
             let first = &latitude_rings[0];
             for segment in 0..segments as usize {
                 let next = (segment + 1) % segments as usize;
-                mesh.add_face(&[north, first[segment], first[next]])?;
+                mesh.add_face(&[north, first[next], first[segment]])?;
             }
 
             for ring in 0..latitude_rings.len().saturating_sub(1) {
@@ -118,9 +118,9 @@ pub fn generate_primitive(kind: PrimitiveKind) -> Result<Mesh, PrimitiveError> {
                     let next = (segment + 1) % segments as usize;
                     mesh.add_face(&[
                         upper[segment],
-                        lower[segment],
-                        lower[next],
                         upper[next],
+                        lower[next],
+                        lower[segment],
                     ])?;
                 }
             }
@@ -128,7 +128,7 @@ pub fn generate_primitive(kind: PrimitiveKind) -> Result<Mesh, PrimitiveError> {
             let last = latitude_rings.last().expect("rings >= 2 creates a latitude ring");
             for segment in 0..segments as usize {
                 let next = (segment + 1) % segments as usize;
-                mesh.add_face(&[last[segment], south, last[next]])?;
+                mesh.add_face(&[last[segment], last[next], south])?;
             }
             Ok(mesh)
         }
@@ -179,7 +179,7 @@ mod tests {
         assert_eq!(mesh.vertex_count(), 2 + 5 * 12);
         assert_eq!(mesh.face_count(), 12 * 6);
         assert!(mesh.validate_topology().is_empty());
-        assert_eq!(mesh.edge_count(), 12 * 6 + 12);
+        assert_eq!(mesh.edge_count(), 12 * (2 * 6 - 1));
     }
 
     #[test]

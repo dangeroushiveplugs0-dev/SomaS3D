@@ -96,8 +96,18 @@ mod tests {
     #[test]
     fn undo_and_redo_restore_exact_snapshots() {
         let mut history = EditHistory::new(vec![1, 2], 10);
-        history.apply(|state| { state.push(3); Ok::<_, ()>(()) }).unwrap();
-        history.apply(|state| { state[0] = 9; Ok::<_, ()>(()) }).unwrap();
+        history
+            .apply(|state| {
+                state.push(3);
+                Ok::<_, ()>(())
+            })
+            .unwrap();
+        history
+            .apply(|state| {
+                state[0] = 9;
+                Ok::<_, ()>(())
+            })
+            .unwrap();
         assert_eq!(history.current(), &vec![9, 2, 3]);
 
         assert!(history.undo());
@@ -115,7 +125,12 @@ mod tests {
     #[test]
     fn failed_edit_is_atomic_and_preserves_redo_history() {
         let mut history = EditHistory::new(vec![1], 5);
-        history.apply(|state| { state.push(2); Ok::<_, &'static str>(()) }).unwrap();
+        history
+            .apply(|state| {
+                state.push(2);
+                Ok::<_, &'static str>(())
+            })
+            .unwrap();
         assert!(history.undo());
 
         let result = history.apply(|state| {
@@ -132,12 +147,22 @@ mod tests {
     fn new_edit_clears_redo_and_history_is_bounded() {
         let mut history = EditHistory::new(0, 2);
         for value in 1..=3 {
-            history.apply(|state| { *state = value; Ok::<_, ()>(()) }).unwrap();
+            history
+                .apply(|state| {
+                    *state = value;
+                    Ok::<_, ()>(())
+                })
+                .unwrap();
         }
         assert_eq!(history.undo_len(), 2);
         assert!(history.undo());
         assert_eq!(*history.current(), 2);
-        history.apply(|state| { *state = 7; Ok::<_, ()>(()) }).unwrap();
+        history
+            .apply(|state| {
+                *state = 7;
+                Ok::<_, ()>(())
+            })
+            .unwrap();
         assert!(!history.can_redo());
         assert_eq!(*history.current(), 7);
     }
@@ -145,7 +170,12 @@ mod tests {
     #[test]
     fn zero_history_limit_keeps_edits_but_disables_undo() {
         let mut history = EditHistory::new(1, 0);
-        history.apply(|state| { *state = 2; Ok::<_, ()>(()) }).unwrap();
+        history
+            .apply(|state| {
+                *state = 2;
+                Ok::<_, ()>(())
+            })
+            .unwrap();
         assert_eq!(*history.current(), 2);
         assert!(!history.can_undo());
         assert!(!history.undo());

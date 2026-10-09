@@ -2,8 +2,8 @@
 
 mod document_editor;
 mod editor;
-mod history;
 mod hair;
+mod history;
 mod material;
 mod material_eval;
 mod primitive_object;
@@ -16,8 +16,8 @@ mod uv;
 
 pub use document_editor::{DocumentEditError, SceneDocumentEditor};
 pub use editor::{EditorError, EditorState, ModelingEditor};
-pub use history::EditHistory;
 pub use hair::{HairError, HairGuide, HairObject, HairPreset, HairSettings, MAX_GUIDE_STRANDS};
+pub use history::EditHistory;
 pub use material::{Material, MaterialSemantics, PbrMaterial};
 pub use material_eval::{evaluate, EvaluatedPbr};
 pub use primitive_object::{PrimitiveObject, PrimitiveObjectError, PrimitiveObjectId};

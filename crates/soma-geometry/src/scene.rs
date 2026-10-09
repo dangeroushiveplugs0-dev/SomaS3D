@@ -100,6 +100,12 @@ impl SceneObject {
         }
     }
 
+    /// Replaces local geometry with an edited mesh and marks the object non-parametric.
+    /// Callers should provide a fully validated candidate mesh so failed edits stay atomic.
+    pub(crate) fn commit_edited_mesh(&mut self, mesh: Mesh) {
+        self.geometry = ObjectGeometry::Mesh(mesh);
+    }
+
     /// Returns a transformed copy of this object's mesh for viewport evaluation.
     /// The stored mesh remains in local space and is never modified.
     pub fn evaluated_mesh(&self) -> Result<Mesh, SceneError> {

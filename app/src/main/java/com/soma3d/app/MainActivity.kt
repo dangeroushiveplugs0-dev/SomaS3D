@@ -35,13 +35,15 @@ class MainActivity : Activity() {
             setPadding(0, 0, dp(8), 0)
         }
         top.addView(title, LinearLayout.LayoutParams(0, -2, 1f))
+        top.addView(toolButton("CUBE+") { viewport.addCube() })
+        top.addView(toolButton("SPH+") { viewport.addSphere() })
         top.addView(toolButton("FIT") { viewport.resetView() })
         top.addView(toolButton("GRID") { viewport.toggleGrid() })
         top.addView(toolButton("EDGE") { viewport.toggleEdges() })
         root.addView(top, FrameLayout.LayoutParams(-1, dp(54), Gravity.TOP))
 
         val status = TextView(this).apply {
-            text = "PERSPECTIVE  •  DRAG TO ORBIT  •  PINCH TO ZOOM"
+            text = "TAP OBJECT TO SELECT  •  DRAG TO ORBIT  •  PINCH TO ZOOM"
             setTextColor(Color.rgb(177, 188, 204))
             textSize = 10f
             letterSpacing = 0.05f
@@ -59,8 +61,8 @@ class MainActivity : Activity() {
         setTextColor(Color.WHITE)
         backgroundTintList = android.content.res.ColorStateList.valueOf(Color.rgb(54, 62, 76))
         setPadding(dp(5), 0, dp(5), 0)
-        minWidth = dp(48)
-        minimumWidth = dp(48)
+        minWidth = dp(44)
+        minimumWidth = dp(44)
         setOnClickListener { action() }
     }
 

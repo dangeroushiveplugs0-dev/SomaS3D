@@ -167,6 +167,8 @@ pub struct ExtrusionResult {
     pub top_face: FaceId,
     /// Side faces, in source-edge order.
     pub side_faces: Vec<FaceId>,
+    /// Remaps pre-existing faces and edges after the source face is replaced.
+    pub topology_remap: TopologyRemap,
 }
 
 #[derive(Debug, Default)]
@@ -464,13 +466,14 @@ impl Mesh {
         Ok(face_id)
     }
 
-    /// Extrudes one face by duplicating its vertices and adding a cap and side faces.
+    /// Extrudes one face by replacing it with a cap and side faces.
     ///
-    /// The source face remains in place. The new cap keeps the source winding, and
-    /// each side is a quad. Existing UV layers are copied to the cap where source
-    /// coordinates exist; side UVs use a predictable world-unit rectangle (edge
-    /// length by extrusion distance). All numeric inputs and derived positions are
-    /// checked before topology is mutated.
+    /// The source face is removed, its boundary is bridged to duplicated vertices,
+    /// and a new cap is created. The returned remap updates IDs of neighboring faces
+    /// and surviving edges. Existing UV layers are copied to the cap where source
+    /// coordinates exist; side UVs use a world-unit rectangle (edge length by
+    /// extrusion distance). Numeric inputs and derived positions are checked before
+    /// topology is mutated.
     pub fn extrude_face(
         &mut self,
         face_id: FaceId,
@@ -525,7 +528,6 @@ impl Mesh {
             edge_lengths.push(length);
         }
 
-        // All fallible numeric and ID checks are complete before mutation.
         let uv_layers: Vec<String> = self.uv_layers.keys().cloned().collect();
         let source_uvs: HashMap<String, Vec<Option<Uv>>> = uv_layers
             .iter()
@@ -538,6 +540,9 @@ impl Mesh {
             })
             .collect();
 
+        // Replacing the source face avoids a three-face edge where the old face,
+        // its neighbor, and a new side would otherwise all share the same boundary.
+        let topology_remap = self.remove_face(face_id)?;
         let new_vertices: Vec<VertexId> = new_positions
             .into_iter()
             .map(|position| self.add_vertex(position))
@@ -583,6 +588,7 @@ impl Mesh {
             vertices: new_vertices,
             top_face,
             side_faces,
+            topology_remap,
         })
     }
 

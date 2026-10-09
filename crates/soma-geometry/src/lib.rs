@@ -10,7 +10,7 @@ pub use material::{Material, MaterialSemantics, PbrMaterial};
 pub use material_eval::{evaluate, EvaluatedPbr};
 pub use selection::{Selection, SelectionMode};
 pub use topology::{
-    CornerId, Edge, EdgeId, Face, FaceId, Mesh, MeshError, TopologyIssue, TopologyRemap,
+    CornerId, Edge, EdgeId, ExtrusionResult, Face, FaceId, Mesh, MeshError, TopologyIssue, TopologyRemap,
     Transform3D, Vertex, VertexId,
 };
 pub use uv::{Uv, UvCorner, UvError, UvIsland, UvLayer, UvTransform};
@@ -310,6 +310,61 @@ mod tests {
             Err(MeshError::DuplicateVertexUpdate(a))
         );
         assert_eq!(mesh.vertex_position(a), Some([0.0, 0.0, 0.0]));
+    }
+
+    #[test]
+    fn extruding_an_isolated_quad_creates_cap_sides_and_valid_topology() {
+        let mut mesh = Mesh::new();
+        let a = mesh.add_vertex([0.0, 0.0, 0.0]);
+        let b = mesh.add_vertex([1.0, 0.0, 0.0]);
+        let c = mesh.add_vertex([1.0, 1.0, 0.0]);
+        let d = mesh.add_vertex([0.0, 1.0, 0.0]);
+        let source = mesh.add_face(&[a, b, c, d]).unwrap();
+        for (corner, uv) in [Uv::new(0.0, 0.0), Uv::new(1.0, 0.0), Uv::new(1.0, 1.0), Uv::new(0.0, 1.0)].into_iter().enumerate() {
+            mesh.set_uv("UVMap", source, corner, uv).unwrap();
+        }
+
+        let result = mesh.extrude_face(source, [0.0, 0.0, 2.0]).unwrap();
+        assert_eq!(mesh.vertex_count(), 8);
+        assert_eq!(mesh.face_count(), 5);
+        assert_eq!(mesh.edge_count(), 12);
+        assert_eq!(result.vertices.len(), 4);
+        assert_eq!(result.side_faces.len(), 4);
+        assert_eq!(mesh.vertex_position(result.vertices[0]), Some([0.0, 0.0, 2.0]));
+        assert_eq!(mesh.uv_layer("UVMap").unwrap().get(result.top_face, 2), Some(Uv::new(1.0, 1.0)));
+        assert_eq!(mesh.uv_layer("UVMap").unwrap().get(result.side_faces[0], 2), Some(Uv::new(1.0, 2.0)));
+        assert!(mesh.validate_topology().is_empty());
+        mesh.validate_uv_layer("UVMap").unwrap();
+    }
+
+    #[test]
+    fn extruding_a_face_shared_with_a_neighbor_keeps_manifold_adjacency() {
+        let (mut mesh, left, _right, _, _, _) = quad_pair();
+        let result = mesh.extrude_face(left, [0.0, 0.0, 1.0]).unwrap();
+        let shared_original_edge = mesh.edge_between(VertexId(1), VertexId(2)).unwrap();
+        assert_eq!(mesh.edge(shared_original_edge).unwrap().faces.len(), 2);
+        assert_eq!(mesh.face_count(), 6);
+        assert_eq!(result.side_faces.len(), 4);
+        assert!(mesh.validate_topology().is_empty());
+    }
+
+    #[test]
+    fn invalid_face_extrusion_does_not_mutate_mesh() {
+        let mut mesh = Mesh::new();
+        let a = mesh.add_vertex([0.0, 0.0, 0.0]);
+        let b = mesh.add_vertex([1.0, 0.0, 0.0]);
+        let c = mesh.add_vertex([0.0, 1.0, 0.0]);
+        let face = mesh.add_face(&[a, b, c]).unwrap();
+        let before_vertices = mesh.vertex_count();
+        let before_edges = mesh.edge_count();
+        let before_faces = mesh.face_count();
+
+        assert_eq!(mesh.extrude_face(face, [f32::INFINITY, 0.0, 0.0]), Err(MeshError::NonFinitePosition));
+        assert_eq!(mesh.extrude_face(FaceId(99), [0.0, 0.0, 1.0]), Err(MeshError::FaceNotFound(FaceId(99))));
+        assert_eq!(mesh.vertex_count(), before_vertices);
+        assert_eq!(mesh.edge_count(), before_edges);
+        assert_eq!(mesh.face_count(), before_faces);
+        assert!(mesh.validate_topology().is_empty());
     }
 
     #[test]

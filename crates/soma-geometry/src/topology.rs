@@ -502,17 +502,18 @@ impl Mesh {
             new_positions.push(translated);
         }
 
-        let distance = (offset[0] * offset[0]
-            + offset[1] * offset[1]
-            + offset[2] * offset[2])
-            .sqrt();
+        let distance =
+            (offset[0] * offset[0] + offset[1] * offset[1] + offset[2] * offset[2]).sqrt();
         if !distance.is_finite() {
             return Err(MeshError::NonFinitePosition);
         }
         let mut edge_lengths = Vec::with_capacity(source.len());
         for index in 0..source.len() {
-            let a = self.vertex_position(source[index]).ok_or(MeshError::InvalidVertex(source[index]))?;
-            let b = self.vertex_position(source[(index + 1) % source.len()])
+            let a = self
+                .vertex_position(source[index])
+                .ok_or(MeshError::InvalidVertex(source[index]))?;
+            let b = self
+                .vertex_position(source[(index + 1) % source.len()])
                 .ok_or(MeshError::InvalidVertex(source[(index + 1) % source.len()]))?;
             let dx = b[0] - a[0];
             let dy = b[1] - a[1];

@@ -420,7 +420,12 @@ mod tests {
         }
 
         let preserved_uvs: Vec<_> = (0..4)
-            .map(|corner| mesh.uv_layer("UVMap").unwrap().get(quads[2], corner).unwrap())
+            .map(|corner| {
+                mesh.uv_layer("UVMap")
+                    .unwrap()
+                    .get(quads[2], corner)
+                    .unwrap()
+            })
             .collect();
         let preserved_edge = mesh
             .edge_between(rightmost_vertices[0], rightmost_vertices[1])
@@ -440,7 +445,12 @@ mod tests {
         );
         for (corner, expected) in preserved_uvs.iter().enumerate() {
             assert_eq!(
-                editor.state().mesh.uv_layer("UVMap").unwrap().get(surviving_face, corner),
+                editor
+                    .state()
+                    .mesh
+                    .uv_layer("UVMap")
+                    .unwrap()
+                    .get(surviving_face, corner),
                 Some(*expected)
             );
         }
@@ -474,7 +484,10 @@ mod tests {
 
         let mut editor = ModelingEditor::new(mesh, 10);
         assert_eq!(editor.select_connected_faces(first).unwrap(), 1);
-        assert_eq!(editor.state().selection().faces().collect::<Vec<_>>(), vec![first]);
+        assert_eq!(
+            editor.state().selection().faces().collect::<Vec<_>>(),
+            vec![first]
+        );
         assert_eq!(editor.state().mesh.validate_topology().len(), 1);
     }
 

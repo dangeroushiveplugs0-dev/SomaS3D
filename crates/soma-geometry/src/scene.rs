@@ -392,10 +392,10 @@ mod tests {
             translation: [f32::NAN, 0.0, 0.0],
             ..Transform3D::default()
         });
-        assert_eq!(
+        assert!(matches!(
             scene.object(id).unwrap().evaluated_mesh(),
             Err(SceneError::Mesh(MeshError::NonFinitePosition))
-        );
+        ));
         assert_eq!(
             scene
                 .object(id)

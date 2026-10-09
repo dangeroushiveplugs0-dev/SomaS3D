@@ -114,6 +114,19 @@ impl UvLayer {
         self.values.get(&(face, corner)).copied()
     }
 
+    pub(crate) fn remap_faces(&mut self, face_map: &HashMap<FaceId, FaceId>) {
+        self.values = self
+            .values
+            .drain()
+            .filter_map(|((face, corner), uv)| {
+                face_map
+                    .get(&face)
+                    .copied()
+                    .map(|new_face| ((new_face, corner), uv))
+            })
+            .collect();
+    }
+
     pub fn corners(&self) -> impl Iterator<Item = UvCorner> + '_ {
         self.values
             .keys()

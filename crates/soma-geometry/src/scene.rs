@@ -269,14 +269,8 @@ impl Scene {
 
     /// Rebuilds a hair object's guides against its current source mesh.
     /// The existing guides remain intact if generation fails.
-    pub fn restyle_hair(
-        &mut self,
-        id: ObjectId,
-        settings: HairSettings,
-    ) -> Result<(), SceneError> {
-        let hair_object = self
-            .hair_object(id)
-            .ok_or(SceneError::ObjectNotFound(id))?;
+    pub fn restyle_hair(&mut self, id: ObjectId, settings: HairSettings) -> Result<(), SceneError> {
+        let hair_object = self.hair_object(id).ok_or(SceneError::ObjectNotFound(id))?;
         let source_object = hair_object.source_object;
         let source_faces = hair_object.hair.source_faces().to_vec();
         let preset = hair_object.hair.preset();
@@ -362,8 +356,7 @@ impl Scene {
             .filter(|hair| hair.source_object == id)
             .map(|hair| hair.id)
             .collect();
-        self.hair_objects
-            .retain(|hair| hair.source_object != id);
+        self.hair_objects.retain(|hair| hair.source_object != id);
         if self
             .active_object
             .is_some_and(|active| active == id || removed_hair_ids.contains(&active))
@@ -429,7 +422,10 @@ mod tests {
         assert_eq!(scene.active_object_id(), Some(hair_id));
         assert_eq!(scene.hair_objects().len(), 1);
         assert_eq!(scene.hair_object(hair_id).unwrap().source_object(), source);
-        assert_eq!(scene.hair_object(hair_id).unwrap().hair().guides().len(), 512);
+        assert_eq!(
+            scene.hair_object(hair_id).unwrap().hair().guides().len(),
+            512
+        );
         assert_eq!(scene.object(source).unwrap().mesh().vertex_count(), 3);
         scene.set_active_object(Some(source)).unwrap();
     }

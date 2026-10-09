@@ -2,13 +2,15 @@
 
 mod material;
 mod material_eval;
+mod selection;
 mod topology;
 mod uv;
 
 pub use material::{Material, MaterialSemantics, PbrMaterial};
 pub use material_eval::{evaluate, EvaluatedPbr};
+pub use selection::{Selection, SelectionMode};
 pub use topology::{CornerId, Edge, EdgeId, Face, FaceId, Mesh, MeshError, Vertex, VertexId};
-pub use uv::{Uv, UvCorner, UvError, UvIsland, UvLayer};
+pub use uv::{Uv, UvCorner, UvError, UvIsland, UvLayer, UvTransform};
 
 #[cfg(test)]
 mod tests {
@@ -141,4 +143,62 @@ mod tests {
         assert_eq!(material.semantics.wetness, 0.8);
         assert_eq!(material.pbr.roughness, 0.5);
     }
+    #[test]
+    fn selected_uv_corners_can_be_translated_independently() {
+        let mut mesh = Mesh::new();
+        let a = mesh.add_vertex([0.0, 0.0, 0.0]);
+        let b = mesh.add_vertex([1.0, 0.0, 0.0]);
+        let c = mesh.add_vertex([0.0, 1.0, 0.0]);
+        let face = mesh.add_face(&[a, b, c]).unwrap();
+        mesh.set_uv("UVMap", face, 0, Uv::new(0.0, 0.0)).unwrap();
+        mesh.set_uv("UVMap", face, 1, Uv::new(1.0, 0.0)).unwrap();
+        mesh.set_uv("UVMap", face, 2, Uv::new(0.0, 1.0)).unwrap();
+
+        mesh.transform_uv_corners(
+            "UVMap",
+            &[UvCorner { face, corner: 1 }],
+            UvTransform::Translate { delta: [0.25, -0.5] },
+        )
+        .unwrap();
+
+        let layer = mesh.uv_layer("UVMap").unwrap();
+        assert_eq!(layer.get(face, 0), Some(Uv::new(0.0, 0.0)));
+        assert_eq!(layer.get(face, 1), Some(Uv::new(1.25, -0.5)));
+        assert_eq!(layer.get(face, 2), Some(Uv::new(0.0, 1.0)));
+    }
+
+    #[test]
+    fn invalid_uv_transform_is_atomic() {
+        let mut mesh = Mesh::new();
+        let a = mesh.add_vertex([0.0, 0.0, 0.0]);
+        let b = mesh.add_vertex([1.0, 0.0, 0.0]);
+        let c = mesh.add_vertex([0.0, 1.0, 0.0]);
+        let face = mesh.add_face(&[a, b, c]).unwrap();
+        for (corner, uv) in [
+            Uv::new(0.0, 0.0),
+            Uv::new(1.0, 0.0),
+            Uv::new(0.0, 1.0),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            mesh.set_uv("UVMap", face, corner, uv).unwrap();
+        }
+        let before = mesh.uv_layer("UVMap").unwrap().get(face, 0);
+        let result = mesh.transform_uv_corners(
+            "UVMap",
+            &[
+                UvCorner { face, corner: 0 },
+                UvCorner { face, corner: 99 },
+            ],
+            UvTransform::Translate { delta: [1.0, 1.0] },
+        );
+        assert_eq!(
+            result,
+            Err(MeshError::Uv(UvError::CornerOutOfRange { face, corner: 99 }))
+        );
+        assert_eq!(mesh.uv_layer("UVMap").unwrap().get(face, 0), before);
+    }
+
+
 }

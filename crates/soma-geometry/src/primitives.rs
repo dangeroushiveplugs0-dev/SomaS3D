@@ -9,9 +9,18 @@ use std::f32::consts::PI;
 /// Supported starter primitives. Dimensions are full extents, not half-extents.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum PrimitiveKind {
-    Cube { size: f32 },
-    Plane { width: f32, depth: f32 },
-    UvSphere { radius: f32, segments: u32, rings: u32 },
+    Cube {
+        size: f32,
+    },
+    Plane {
+        width: f32,
+        depth: f32,
+    },
+    UvSphere {
+        radius: f32,
+        segments: u32,
+        rings: u32,
+    },
 }
 
 /// Invalid parameters for a generated primitive.
@@ -76,7 +85,11 @@ pub fn generate_primitive(kind: PrimitiveKind) -> Result<Mesh, PrimitiveError> {
             mesh.add_face(&[a, d, c, b])?;
             Ok(mesh)
         }
-        PrimitiveKind::UvSphere { radius, segments, rings } => {
+        PrimitiveKind::UvSphere {
+            radius,
+            segments,
+            rings,
+        } => {
             validate_dimension(radius)?;
             if segments < 3 {
                 return Err(PrimitiveError::TooFewSegments);
@@ -90,8 +103,7 @@ pub fn generate_primitive(kind: PrimitiveKind) -> Result<Mesh, PrimitiveError> {
 
             let mut mesh = Mesh::new();
             let north = mesh.add_vertex([0.0, radius, 0.0]);
-            let mut latitude_rings: Vec<Vec<VertexId>> =
-                Vec::with_capacity((rings - 1) as usize);
+            let mut latitude_rings: Vec<Vec<VertexId>> = Vec::with_capacity((rings - 1) as usize);
             for ring in 1..rings {
                 let theta = PI * ring as f32 / rings as f32;
                 let y = radius * theta.cos();
@@ -116,16 +128,13 @@ pub fn generate_primitive(kind: PrimitiveKind) -> Result<Mesh, PrimitiveError> {
                 let lower = &latitude_rings[ring + 1];
                 for segment in 0..segments as usize {
                     let next = (segment + 1) % segments as usize;
-                    mesh.add_face(&[
-                        upper[segment],
-                        upper[next],
-                        lower[next],
-                        lower[segment],
-                    ])?;
+                    mesh.add_face(&[upper[segment], upper[next], lower[next], lower[segment]])?;
                 }
             }
 
-            let last = latitude_rings.last().expect("rings >= 2 creates a latitude ring");
+            let last = latitude_rings
+                .last()
+                .expect("rings >= 2 creates a latitude ring");
             for segment in 0..segments as usize {
                 let next = (segment + 1) % segments as usize;
                 mesh.add_face(&[last[segment], last[next], south])?;
@@ -160,7 +169,11 @@ mod tests {
 
     #[test]
     fn plane_is_centered_and_uses_one_quad() {
-        let mesh = generate_primitive(PrimitiveKind::Plane { width: 4.0, depth: 2.0 }).unwrap();
+        let mesh = generate_primitive(PrimitiveKind::Plane {
+            width: 4.0,
+            depth: 2.0,
+        })
+        .unwrap();
         assert_eq!(mesh.vertex_count(), 4);
         assert_eq!(mesh.edge_count(), 4);
         assert_eq!(mesh.face_count(), 1);
@@ -189,17 +202,29 @@ mod tests {
             PrimitiveError::NonPositiveDimension
         );
         assert_eq!(
-            generate_primitive(PrimitiveKind::Plane { width: f32::NAN, depth: 1.0 }).unwrap_err(),
+            generate_primitive(PrimitiveKind::Plane {
+                width: f32::NAN,
+                depth: 1.0
+            })
+            .unwrap_err(),
             PrimitiveError::NonFiniteDimension
         );
         assert_eq!(
-            generate_primitive(PrimitiveKind::UvSphere { radius: 1.0, segments: 2, rings: 4 })
-                .unwrap_err(),
+            generate_primitive(PrimitiveKind::UvSphere {
+                radius: 1.0,
+                segments: 2,
+                rings: 4
+            })
+            .unwrap_err(),
             PrimitiveError::TooFewSegments
         );
         assert_eq!(
-            generate_primitive(PrimitiveKind::UvSphere { radius: 1.0, segments: 512, rings: 4 })
-                .unwrap_err(),
+            generate_primitive(PrimitiveKind::UvSphere {
+                radius: 1.0,
+                segments: 512,
+                rings: 4
+            })
+            .unwrap_err(),
             PrimitiveError::ExcessiveResolution
         );
     }

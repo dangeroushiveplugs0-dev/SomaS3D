@@ -22,7 +22,7 @@ pub use material::{Material, MaterialSemantics, PbrMaterial};
 pub use material_eval::{evaluate, EvaluatedPbr};
 pub use primitive_object::{PrimitiveObject, PrimitiveObjectError, PrimitiveObjectId};
 pub use primitives::{generate_primitive, PrimitiveError, PrimitiveKind};
-pub use scene::{ObjectId, Scene, SceneError, SceneObject};
+pub use scene::{HairSceneObject, ObjectId, Scene, SceneError, SceneObject};
 pub use scene_editor::{SceneModelingEditor, SceneModelingError};
 pub use selection::{Selection, SelectionMode};
 pub use topology::{

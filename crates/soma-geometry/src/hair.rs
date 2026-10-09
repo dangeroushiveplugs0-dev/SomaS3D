@@ -66,7 +66,10 @@ impl HairSettings {
             || !(0.0..=1.0).contains(&self.curl)
             || !self.gravity.is_finite()
             || !(0.0..=1.0).contains(&self.gravity)
-            || !self.color.iter().all(|channel| channel.is_finite() && (0.0..=1.0).contains(channel))
+            || !self
+                .color
+                .iter()
+                .all(|channel| channel.is_finite() && (0.0..=1.0).contains(channel))
         {
             return Err(HairError::InvalidSettings);
         }
@@ -136,14 +139,23 @@ impl HairObject {
         let mut surfaces = Vec::with_capacity(source_faces.len());
         let mut total_area = 0.0f32;
         for &face_id in &source_faces {
-            let face = source.face(face_id).ok_or(HairError::FaceNotFound(face_id))?;
+            let face = source
+                .face(face_id)
+                .ok_or(HairError::FaceNotFound(face_id))?;
             let mut positions = Vec::with_capacity(face.vertices.len());
             for &vertex in &face.vertices {
-                let position = source.vertex_position(vertex).ok_or(
-                    HairError::InvalidFaceVertex { face: face_id, vertex },
-                )?;
+                let position =
+                    source
+                        .vertex_position(vertex)
+                        .ok_or(HairError::InvalidFaceVertex {
+                            face: face_id,
+                            vertex,
+                        })?;
                 if !position.iter().all(|component| component.is_finite()) {
-                    return Err(HairError::InvalidFaceVertex { face: face_id, vertex });
+                    return Err(HairError::InvalidFaceVertex {
+                        face: face_id,
+                        vertex,
+                    });
                 }
                 positions.push(position);
             }
@@ -235,11 +247,7 @@ impl HairObject {
     }
 
     /// Regenerates a candidate first, so invalid settings never replace valid guides.
-    pub fn restyle(
-        &mut self,
-        source: &Mesh,
-        settings: HairSettings,
-    ) -> Result<(), HairError> {
+    pub fn restyle(&mut self, source: &Mesh, settings: HairSettings) -> Result<(), HairError> {
         let candidate = Self::generate(source, &self.source_faces, self.preset, settings)?;
         *self = candidate;
         Ok(())
@@ -375,7 +383,7 @@ mod tests {
         let b = mesh.add_vertex([1.0, 0.0, -1.0]);
         let c = mesh.add_vertex([1.0, 0.0, 1.0]);
         let d = mesh.add_vertex([-1.0, 0.0, 1.0]);
-        let face = mesh.add_face(&[a, b, c, d]).unwrap();
+        let face = mesh.add_face(&[a, d, c, b]).unwrap();
         for (corner, uv) in [
             Uv::new(0.0, 0.0),
             Uv::new(1.0, 0.0),
@@ -405,9 +413,10 @@ mod tests {
         assert_eq!(hair.guides().len(), 2048);
         assert_eq!(hair.source_faces(), &[face]);
         assert_eq!(mesh.vertex_count(), before);
-        assert!(hair.guides().iter().all(|guide| {
-            guide.points.len() == 6 && guide.points[0] == guide.root_position
-        }));
+        assert!(hair
+            .guides()
+            .iter()
+            .all(|guide| { guide.points.len() == 6 && guide.points[0] == guide.root_position }));
         assert!(hair.guides().iter().all(|guide| {
             guide.root_position[0].abs() <= 1.0 && guide.root_position[2].abs() <= 1.0
         }));
@@ -448,7 +457,10 @@ mod tests {
             length: f32::NAN,
             ..HairSettings::short_hair()
         };
-        assert_eq!(hair.restyle(&mesh, invalid), Err(HairError::InvalidSettings));
+        assert_eq!(
+            hair.restyle(&mesh, invalid),
+            Err(HairError::InvalidSettings)
+        );
         assert_eq!(hair, before);
     }
 

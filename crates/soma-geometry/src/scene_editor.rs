@@ -60,7 +60,10 @@ impl SceneModelingEditor {
     }
 
     fn ensure_active_editor(&mut self) -> Result<ObjectId, SceneModelingError> {
-        let id = self.scene.active_object_id().ok_or(SceneModelingError::NoActiveObject)?;
+        let id = self
+            .scene
+            .active_object_id()
+            .ok_or(SceneModelingError::NoActiveObject)?;
         if !self.editors.contains_key(&id) {
             let mesh = self.scene.object(id).ok_or(SceneError::ObjectNotFound(id))?.mesh().clone();
             self.editors.insert(id, ModelingEditor::new(mesh, self.undo_limit));
@@ -76,7 +79,10 @@ impl SceneModelingEditor {
             .state()
             .mesh()
             .clone();
-        let object = self.scene.object_mut(id).ok_or(SceneError::ObjectNotFound(id))?;
+        let object = self
+            .scene
+            .object_mut(id)
+            .ok_or(SceneError::ObjectNotFound(id))?;
         object.commit_edited_mesh(mesh);
         Ok(())
     }
@@ -108,7 +114,10 @@ impl SceneModelingEditor {
         Ok(())
     }
 
-    pub fn transform_selected_vertices(&mut self, transform: Transform3D) -> Result<(), SceneModelingError> {
+    pub fn transform_selected_vertices(
+        &mut self,
+        transform: Transform3D,
+    ) -> Result<(), SceneModelingError> {
         let id = self.ensure_active_editor()?;
         self.editors
             .get_mut(&id)
@@ -197,7 +206,13 @@ mod tests {
         };
         scene.object_mut(id).unwrap().set_transform(transform);
         let mut editor = SceneModelingEditor::new(scene, 8);
-        let before = editor.scene().object(id).unwrap().mesh().vertex_position(VertexId(0)).unwrap();
+        let before = editor
+            .scene()
+            .object(id)
+            .unwrap()
+            .mesh()
+            .vertex_position(VertexId(0))
+            .unwrap();
 
         editor.select_vertex(VertexId(0)).unwrap();
         editor
@@ -206,22 +221,50 @@ mod tests {
                 ..Transform3D::default()
             })
             .unwrap();
-        assert_eq!(editor.scene().object(id).unwrap().mesh().vertex_position(VertexId(0)), Some([before[0], before[1], before[2] + 1.0]));
+        assert_eq!(
+            editor
+                .scene()
+                .object(id)
+                .unwrap()
+                .mesh()
+                .vertex_position(VertexId(0)),
+            Some([before[0], before[1], before[2] + 1.0])
+        );
         assert_eq!(editor.scene().object(id).unwrap().transform(), transform);
         assert!(!editor.scene().object(id).unwrap().is_parametric());
 
         assert!(editor.undo().unwrap());
-        assert_eq!(editor.scene().object(id).unwrap().mesh().vertex_position(VertexId(0)), Some(before));
+        assert_eq!(
+            editor
+                .scene()
+                .object(id)
+                .unwrap()
+                .mesh()
+                .vertex_position(VertexId(0)),
+            Some(before)
+        );
         assert_eq!(editor.scene().object(id).unwrap().transform(), transform);
         assert!(editor.redo().unwrap());
-        assert_eq!(editor.scene().object(id).unwrap().mesh().vertex_position(VertexId(0)), Some([before[0], before[1], before[2] + 1.0]));
+        assert_eq!(
+            editor
+                .scene()
+                .object(id)
+                .unwrap()
+                .mesh()
+                .vertex_position(VertexId(0)),
+            Some([before[0], before[1], before[2] + 1.0])
+        );
     }
 
     #[test]
     fn each_object_keeps_its_own_edit_history() {
         let mut scene = Scene::new();
-        let first = scene.add_primitive("A", PrimitiveKind::Cube { size: 1.0 }).unwrap();
-        let second = scene.add_primitive("B", PrimitiveKind::Cube { size: 1.0 }).unwrap();
+        let first = scene
+            .add_primitive("A", PrimitiveKind::Cube { size: 1.0 })
+            .unwrap();
+        let second = scene
+            .add_primitive("B", PrimitiveKind::Cube { size: 1.0 })
+            .unwrap();
         let mut editor = SceneModelingEditor::new(scene, 8);
         editor.select_vertex(VertexId(0)).unwrap();
         editor
@@ -234,6 +277,14 @@ mod tests {
         assert!(editor.can_undo().unwrap());
         editor.set_active_object(Some(second)).unwrap();
         assert!(!editor.can_undo().unwrap());
-        assert_eq!(editor.scene().object(first).unwrap().mesh().vertex_position(VertexId(0)), Some([-0.5, -0.5, 1.5]));
+        assert_eq!(
+            editor
+                .scene()
+                .object(first)
+                .unwrap()
+                .mesh()
+                .vertex_position(VertexId(0)),
+            Some([-0.5, -0.5, 1.5])
+        );
     }
 }

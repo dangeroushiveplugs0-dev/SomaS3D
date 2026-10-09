@@ -74,19 +74,19 @@ impl SceneObject {
     }
 
     pub fn is_parametric(&self) -> bool {
-        matches!(self.geometry, ObjectGeometry::Parametric { .. })
+        matches!(&self.geometry, ObjectGeometry::Parametric { .. })
     }
 
     pub fn primitive_kind(&self) -> Option<PrimitiveKind> {
-        match self.geometry {
-            ObjectGeometry::Parametric { kind, .. } => Some(kind),
+        match &self.geometry {
+            ObjectGeometry::Parametric { kind, .. } => Some(*kind),
             ObjectGeometry::Mesh(_) => None,
         }
     }
 
     pub fn geometry_revision(&self) -> u64 {
-        match self.geometry {
-            ObjectGeometry::Parametric { revision, .. } => revision,
+        match &self.geometry {
+            ObjectGeometry::Parametric { revision, .. } => *revision,
             ObjectGeometry::Mesh(_) => 0,
         }
     }

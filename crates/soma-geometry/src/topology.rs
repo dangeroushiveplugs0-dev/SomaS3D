@@ -122,8 +122,8 @@ impl Mesh {
 
                 if face.vertices.len() >= 2 {
                     let next = face.vertices[(corner + 1) % face.vertices.len()];
-                    if vertex.0 as usize < self.vertices.len()
-                        && next.0 as usize < self.vertices.len()
+                    if (vertex.0 as usize) < self.vertices.len()
+                        && (next.0 as usize) < self.vertices.len()
                         && !self.edge_lookup.contains_key(&edge_key(vertex, next))
                     {
                         issues.push(TopologyIssue::MissingEdgeForFace {

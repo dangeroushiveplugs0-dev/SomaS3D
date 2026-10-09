@@ -121,7 +121,9 @@ impl Mesh {
     }
 
     pub fn vertex_position(&self, id: VertexId) -> Option<[f32; 3]> {
-        self.vertices.get(id.0 as usize).map(|vertex| vertex.position)
+        self.vertices
+            .get(id.0 as usize)
+            .map(|vertex| vertex.position)
     }
 
     pub fn face(&self, id: FaceId) -> Option<&Face> {
@@ -137,7 +139,10 @@ impl Mesh {
     }
 
     pub fn set_edge_seam(&mut self, edge: EdgeId, seam: bool) -> Result<(), MeshError> {
-        let edge = self.edges.get_mut(edge.0 as usize).ok_or(MeshError::EdgeNotFound(edge))?;
+        let edge = self
+            .edges
+            .get_mut(edge.0 as usize)
+            .ok_or(MeshError::EdgeNotFound(edge))?;
         edge.seam = seam;
         Ok(())
     }
@@ -253,8 +258,10 @@ impl Mesh {
             let corners = island_faces
                 .iter()
                 .flat_map(|&face_id| {
-                    (0..self.faces[face_id.0 as usize].vertices.len())
-                        .map(move |corner| UvCorner { face: face_id, corner })
+                    (0..self.faces[face_id.0 as usize].vertices.len()).map(move |corner| UvCorner {
+                        face: face_id,
+                        corner,
+                    })
                 })
                 .collect();
 

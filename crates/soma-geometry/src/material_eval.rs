@@ -58,8 +58,14 @@ mod tests {
     fn dryness_cannot_push_roughness_above_one() {
         let material = Material {
             name: "test".into(),
-            pbr: PbrMaterial { roughness: 1.0, ..PbrMaterial::default() },
-            semantics: MaterialSemantics { dryness: 1.0, ..MaterialSemantics::default() },
+            pbr: PbrMaterial {
+                roughness: 1.0,
+                ..PbrMaterial::default()
+            },
+            semantics: MaterialSemantics {
+                dryness: 1.0,
+                ..MaterialSemantics::default()
+            },
         };
         assert_eq!(evaluate(&material).roughness, 1.0);
     }

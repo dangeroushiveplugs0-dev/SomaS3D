@@ -51,10 +51,7 @@ impl UvTransform {
                 let (sin, cos) = radians.sin_cos();
                 let u = uv.u - pivot.u;
                 let v = uv.v - pivot.v;
-                Uv::new(
-                    pivot.u + u * cos - v * sin,
-                    pivot.v + u * sin + v * cos,
-                )
+                Uv::new(pivot.u + u * cos - v * sin, pivot.v + u * sin + v * cos)
             }
         };
         if result.is_finite() {

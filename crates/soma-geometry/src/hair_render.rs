@@ -4,7 +4,7 @@
 //! It stays renderer-agnostic: a viewport can upload these lines to its GPU
 //! backend without knowing how hair is stored in the scene document.
 
-use crate::{HairError, ObjectId, Scene, SceneError};
+use crate::{ObjectId, Scene, SceneError};
 
 /// World-space guide polylines and styling data ready for viewport submission.
 #[derive(Debug, Clone, PartialEq)]
@@ -56,7 +56,7 @@ impl Scene {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{FaceId, HairPreset, HairSettings, Mesh, Transform3D};
+    use crate::{HairPreset, HairSettings, Mesh, Transform3D};
 
     fn scene_with_hair() -> (Scene, ObjectId, ObjectId) {
         let mut mesh = Mesh::new();

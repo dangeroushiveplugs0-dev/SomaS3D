@@ -16,6 +16,13 @@ SomaS3D is being built as a modeling application first.
 
 The PBR material data model and semantic material evaluator are already part of the initial foundation. Rich texture image management and authoring tools remain downstream of stable topology and UV behavior.
 
+## Face deletion
+
+- Removing a face rebuilds edge adjacency and removes edges no longer used by any face.
+- Per-corner UV values are remapped with surviving face IDs; deleted-face UV values are discarded.
+- Existing seam flags are preserved for edges that survive. Vertex IDs remain unchanged.
+- Because face and edge IDs are compact vector indices, callers must apply the returned `TopologyRemap` to selections and other ID-based data.
+
 ## Vertex editing
 
 - Multi-vertex position changes validate every vertex ID and every coordinate before changing any position.

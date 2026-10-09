@@ -364,7 +364,10 @@ impl Scene {
             .collect();
         self.hair_objects
             .retain(|hair| hair.source_object != id);
-        if self.active_object == Some(id) || removed_hair_ids.contains(&self.active_object.unwrap_or(id)) {
+        if self
+            .active_object
+            .is_some_and(|active| active == id || removed_hair_ids.contains(&active))
+        {
             self.active_object = None;
         }
         Ok(removed)

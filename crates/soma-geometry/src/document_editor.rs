@@ -99,6 +99,32 @@ impl SceneDocumentEditor {
         Ok(())
     }
 
+    /// Applies a validated local-mesh edit on the same document undo/redo timeline.
+    ///
+    /// The mesh is edited on a clone and committed only when the callback succeeds.
+    /// Editing a parametric object converts it to ordinary mesh geometry; undo restores
+    /// its original parametric state and redo restores the edited mesh.
+    pub fn edit_mesh(
+        &mut self,
+        id: ObjectId,
+        edit: impl FnOnce(&mut crate::Mesh) -> Result<(), crate::MeshError>,
+    ) -> Result<(), DocumentEditError> {
+        self.history.apply(|scene| {
+            let mut mesh = scene
+                .object(id)
+                .ok_or(SceneError::ObjectNotFound(id))?
+                .mesh()
+                .clone();
+            edit(&mut mesh).map_err(SceneError::from)?;
+            scene
+                .object_mut(id)
+                .ok_or(SceneError::ObjectNotFound(id))?
+                .commit_edited_mesh(mesh);
+            Ok::<_, SceneError>(())
+        })?;
+        Ok(())
+    }
+
     pub fn update_primitive(
         &mut self,
         id: ObjectId,
@@ -149,6 +175,44 @@ mod tests {
         assert_eq!(document.scene().object(id).unwrap().name(), "Cube");
         assert!(document.redo());
         assert_eq!(document.scene().object(id).unwrap().name(), "Hero");
+    }
+
+    #[test]
+    fn mesh_edits_share_document_undo_and_redo_timeline() {
+        let mut document = SceneDocumentEditor::new(Scene::new(), 8);
+        let id = document
+            .add_primitive("Cube", PrimitiveKind::Cube { size: 1.0 })
+            .unwrap();
+        let original_position = document.scene().object(id).unwrap().mesh().vertex_position(crate::VertexId(0));
+
+        document
+            .edit_mesh(id, |mesh| mesh.translate_vertices(&[crate::VertexId(0)], [2.0, 0.0, 0.0]))
+            .unwrap();
+        assert!(!document.scene().object(id).unwrap().is_parametric());
+        assert_ne!(document.scene().object(id).unwrap().mesh().vertex_position(crate::VertexId(0)), original_position);
+
+        assert!(document.undo());
+        assert!(document.scene().object(id).unwrap().is_parametric());
+        assert_eq!(document.scene().object(id).unwrap().mesh().vertex_position(crate::VertexId(0)), original_position);
+        assert!(document.redo());
+        assert!(!document.scene().object(id).unwrap().is_parametric());
+        assert_ne!(document.scene().object(id).unwrap().mesh().vertex_position(crate::VertexId(0)), original_position);
+    }
+
+    #[test]
+    fn failed_mesh_edit_keeps_scene_and_redo_history_unchanged() {
+        let mut document = SceneDocumentEditor::new(Scene::new(), 8);
+        let id = document.add_primitive("Cube", PrimitiveKind::Cube { size: 1.0 }).unwrap();
+        document.rename_object(id, "Hero").unwrap();
+        assert!(document.undo());
+        let before = document.scene().object(id).unwrap().mesh().vertex_position(crate::VertexId(0));
+
+        assert!(document.edit_mesh(id, |mesh| {
+            mesh.translate_vertices(&[crate::VertexId(999)], [1.0, 0.0, 0.0])
+        }).is_err());
+        assert_eq!(document.scene().object(id).unwrap().mesh().vertex_position(crate::VertexId(0)), before);
+        assert!(document.can_redo());
+        assert!(document.scene().object(id).unwrap().is_parametric());
     }
 
     #[test]

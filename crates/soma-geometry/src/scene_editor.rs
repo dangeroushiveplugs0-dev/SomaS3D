@@ -272,6 +272,7 @@ mod tests {
             .add_primitive("B", PrimitiveKind::Cube { size: 1.0 })
             .unwrap();
         let mut editor = SceneModelingEditor::new(scene, 8);
+        editor.set_active_object(Some(first)).unwrap();
         editor.select_vertex(VertexId(0)).unwrap();
         editor
             .transform_selected_vertices(Transform3D {

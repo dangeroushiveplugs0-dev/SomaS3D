@@ -90,6 +90,13 @@ pub enum TopologyIssue {
     },
 }
 
+/// ID remapping produced by a topology operation that compacts face and edge arrays.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct TopologyRemap {
+    pub faces: HashMap<FaceId, FaceId>,
+    pub edges: HashMap<EdgeId, EdgeId>,
+}
+
 #[derive(Debug, Default)]
 pub struct Mesh {
     vertices: Vec<Vertex>,
@@ -363,6 +370,78 @@ impl Mesh {
         }
 
         Ok(face_id)
+    }
+
+    /// Deletes a face, removes orphaned edges, and rebuilds adjacency and UV corner keys.
+    ///
+    /// Face and edge IDs after the removed face may change because this mesh uses
+    /// compact vector-index IDs. The returned remap contains every surviving ID.
+    /// Vertex IDs and vertex positions are unchanged.
+    pub fn remove_face(&mut self, face_id: FaceId) -> Result<TopologyRemap, MeshError> {
+        if self.faces.get(face_id.0 as usize).is_none() {
+            return Err(MeshError::FaceNotFound(face_id));
+        }
+
+        let old_faces = self.faces.clone();
+        let old_edges = self.edges.clone();
+        let mut face_map = HashMap::with_capacity(old_faces.len().saturating_sub(1));
+        let mut new_face_id = 0u32;
+        for index in 0..old_faces.len() {
+            let old_id = FaceId(index as u32);
+            if old_id != face_id {
+                face_map.insert(old_id, FaceId(new_face_id));
+                new_face_id += 1;
+            }
+        }
+
+        self.faces.remove(face_id.0 as usize);
+        for layer in self.uv_layers.values_mut() {
+            layer.remap_faces(&face_map);
+        }
+
+        let seams: HashMap<(u32, u32), bool> = old_edges
+            .iter()
+            .map(|edge| (edge_key(edge.vertices[0], edge.vertices[1]), edge.seam))
+            .collect();
+
+        self.edges.clear();
+        self.edge_lookup.clear();
+        let mut edge_map = HashMap::new();
+
+        for (face_index, face) in self.faces.iter().enumerate() {
+            let current_face = FaceId(face_index as u32);
+            for corner in 0..face.vertices.len() {
+                let a = face.vertices[corner];
+                let b = face.vertices[(corner + 1) % face.vertices.len()];
+                let key = edge_key(a, b);
+
+                if let Some(&edge_id) = self.edge_lookup.get(&key) {
+                    self.edges[edge_id.0 as usize].faces.push(current_face);
+                } else {
+                    let edge_id = EdgeId(self.edges.len() as u32);
+                    self.edges.push(Edge {
+                        vertices: [a, b],
+                        seam: seams.get(&key).copied().unwrap_or(false),
+                        faces: vec![current_face],
+                    });
+                    self.edge_lookup.insert(key, edge_id);
+                }
+            }
+        }
+
+        for (old_index, old_edge) in old_edges.iter().enumerate() {
+            if let Some(&new_id) = self.edge_lookup.get(&edge_key(
+                old_edge.vertices[0],
+                old_edge.vertices[1],
+            )) {
+                edge_map.insert(EdgeId(old_index as u32), new_id);
+            }
+        }
+
+        Ok(TopologyRemap {
+            faces: face_map,
+            edges: edge_map,
+        })
     }
 
     pub fn vertex_position(&self, id: VertexId) -> Option<[f32; 3]> {

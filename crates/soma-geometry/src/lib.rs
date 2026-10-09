@@ -376,8 +376,14 @@ mod tests {
         let before_edges = mesh.edge_count();
         let before_faces = mesh.face_count();
 
-        assert_eq!(mesh.extrude_face(face, [f32::INFINITY, 0.0, 0.0]), Err(MeshError::NonFinitePosition));
-        assert_eq!(mesh.extrude_face(FaceId(99), [0.0, 0.0, 1.0]), Err(MeshError::FaceNotFound(FaceId(99))));
+        assert_eq!(
+            mesh.extrude_face(face, [f32::INFINITY, 0.0, 0.0]),
+            Err(MeshError::NonFinitePosition)
+        );
+        assert_eq!(
+            mesh.extrude_face(FaceId(99), [0.0, 0.0, 1.0]),
+            Err(MeshError::FaceNotFound(FaceId(99)))
+        );
         assert_eq!(mesh.vertex_count(), before_vertices);
         assert_eq!(mesh.edge_count(), before_edges);
         assert_eq!(mesh.face_count(), before_faces);

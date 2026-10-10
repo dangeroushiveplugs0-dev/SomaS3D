@@ -51,6 +51,14 @@ class OrbitCamera {
         distance = 10.0
     }
 
+    /** Frames a world-space bounding sphere while retaining the current orbit direction. */
+    fun frame(center: Vec3, radius: Double) {
+        targetX = center.x
+        targetY = center.y
+        targetZ = center.z
+        distance = (radius.coerceAtLeast(0.5) * 2.8).coerceIn(1.8, 80.0)
+    }
+
     fun project(point: Vec3, width: Float, height: Float): Point2? {
         if (width <= 0f || height <= 0f) return null
 

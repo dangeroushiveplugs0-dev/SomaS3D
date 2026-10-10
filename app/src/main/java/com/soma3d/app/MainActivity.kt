@@ -209,6 +209,7 @@ class MainActivity : Activity() {
                         "\nNormalized meshes: ${normalized.meshes.size} · skipped ${linked.skippedMeshCount + normalized.skippedMeshCount}" +
                         "\nLinker warnings: ${linked.warnings.size} · mesh warnings: ${normalized.warnings.size}"
                 } ?: "\nObject/Mesh decoding unavailable"
+                viewport.setMeshes(targeted?.third?.meshes ?: emptyList())
                 statusText.text = "$displayName\nBlender ${result.version ?: "unknown"} · ${result.pointerBits ?: "?"}-bit\nBlocks: ${result.blocks.size} · $schemaLine\n$ending$dataLine\n${result.message}"
             }
         }.start()

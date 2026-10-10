@@ -59,6 +59,20 @@ class ViewportView(context: Context) : View(context) {
         color = Color.rgb(218, 225, 235)
         textSize = dp(12f)
     }
+    private val meshFillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.rgb(112, 145, 180)
+        alpha = 170
+        style = Paint.Style.FILL
+    }
+    private val meshEdgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.rgb(205, 220, 237)
+        alpha = 220
+        strokeWidth = dp(1f)
+        style = Paint.Style.STROKE
+    }
+
+    private var sceneMeshes: List<SomaMesh> = emptyList()
+    private var renderedPolygonCount = 0
 
     private val scaleDetector = ScaleGestureDetector(context,
         object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
@@ -80,18 +94,95 @@ class ViewportView(context: Context) : View(context) {
     }
 
     fun resetCamera() {
-        camera.reset()
+        if (sceneMeshes.isEmpty()) {
+            camera.reset()
+        } else {
+            frameMeshes(sceneMeshes)
+        }
         invalidate()
     }
+
+    /** Replaces the visible scene with normalized mesh data and frames it for the viewport. */
+    fun setMeshes(meshes: List<SomaMesh>) {
+        sceneMeshes = meshes
+        frameMeshes(meshes)
+        invalidate()
+    }
+
+    private fun frameMeshes(meshes: List<SomaMesh>) {
+        val points = meshes.asSequence().flatMap { it.vertices.asSequence() }
+            .take(100_001).toList()
+        if (points.isEmpty()) {
+            camera.reset()
+            return
+        }
+        var minX = Double.POSITIVE_INFINITY
+        var minY = Double.POSITIVE_INFINITY
+        var minZ = Double.POSITIVE_INFINITY
+        var maxX = Double.NEGATIVE_INFINITY
+        var maxY = Double.NEGATIVE_INFINITY
+        var maxZ = Double.NEGATIVE_INFINITY
+        for (point in points) {
+            // Blender files are Z-up; the viewport camera/grid use Y-up.
+            val world = blenderToWorld(point)
+            minX = minOf(minX, world.x); maxX = maxOf(maxX, world.x)
+            minY = minOf(minY, world.y); maxY = maxOf(maxY, world.y)
+            minZ = minOf(minZ, world.z); maxZ = maxOf(maxZ, world.z)
+        }
+        val center = OrbitCamera.Vec3((minX + maxX) / 2, (minY + maxY) / 2, (minZ + maxZ) / 2)
+        val dx = maxX - minX
+        val dy = maxY - minY
+        val dz = maxZ - minZ
+        val radius = kotlin.math.sqrt(dx * dx + dy * dy + dz * dz) / 2.0
+        camera.frame(center, radius)
+    }
+
+    private fun blenderToWorld(point: SomaVector3) =
+        OrbitCamera.Vec3(point.x, point.z, point.y)
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), backgroundPaint)
         drawGrid(canvas)
         drawAxes(canvas)
+        drawMeshes(canvas)
         drawOrigin(canvas)
         drawAxisGizmo(canvas)
         drawCameraBadge(canvas)
+    }
+
+
+    private fun drawMeshes(canvas: Canvas) {
+        var remainingPolygons = 20_000
+        var remainingVertices = 100_000
+        renderedPolygonCount = 0
+        for (mesh in sceneMeshes) {
+            if (remainingPolygons <= 0 || remainingVertices <= 0) break
+            if (mesh.vertices.size > remainingVertices) continue
+            remainingVertices -= mesh.vertices.size
+            for (polygon in mesh.polygons) {
+                if (remainingPolygons <= 0) break
+                if (polygon.vertexIndices.size < 3 || polygon.vertexIndices.size > 256) continue
+                val firstIndex = polygon.vertexIndices.first()
+                if (firstIndex !in mesh.vertices.indices) continue
+                val first = camera.project(blenderToWorld(mesh.vertices[firstIndex]), width.toFloat(), height.toFloat())
+                    ?: continue
+                val path = Path().apply { moveTo(first.x, first.y) }
+                var valid = true
+                for (index in polygon.vertexIndices.drop(1)) {
+                    if (index !in mesh.vertices.indices) { valid = false; break }
+                    val projected = camera.project(blenderToWorld(mesh.vertices[index]), width.toFloat(), height.toFloat())
+                    if (projected == null) { valid = false; break }
+                    path.lineTo(projected.x, projected.y)
+                }
+                if (!valid) continue
+                path.close()
+                canvas.drawPath(path, meshFillPaint)
+                canvas.drawPath(path, meshEdgePaint)
+                renderedPolygonCount++
+                remainingPolygons--
+            }
+        }
     }
 
     private fun drawGrid(canvas: Canvas) {

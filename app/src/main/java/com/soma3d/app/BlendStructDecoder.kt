@@ -29,7 +29,7 @@ object BlendStructDecoder {
         val alignment: Int = 1
     )
 
-    data class DecodedRecord(val typeName: String, val fields: Map<String, Any>)
+    data class DecodedRecord(val typeName: String, val fields: Map<String, Any>, val fileAddress: Long? = null)
 
     data class DecodeResult(
         val records: List<DecodedRecord>,

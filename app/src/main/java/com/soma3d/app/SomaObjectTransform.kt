@@ -3,7 +3,7 @@ package com.soma3d.app
 /**
  * Applies a decoded Blender Object.obmat matrix to normalized mesh vertices.
  *
- * Blender stores this 4x4 matrix as 16 row-major floats with translation in
+ * Blender stores this 4x4 matrix as four contiguous columns; translation is in
  * indices 12, 13, and 14. This helper accepts only a complete finite matrix;
  * absent or malformed matrices are never silently treated as identity.
  */

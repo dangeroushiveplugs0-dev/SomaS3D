@@ -222,3 +222,10 @@ Do not assume every downloaded character file contains these features or that a 
 ### Expanded fixture coverage
 
 Add fixtures for physics settings and collision proxies, custom UI metadata, object/collection and modifier toggles, corrective shape-key relationships, and embedded script/text datablocks. Assert that scripts remain inert and that unknown properties survive round-tripping through the IR where feasible.
+
+
+## Normalized mesh foundation
+
+`SomaMeshIR.kt` now defines Blender-independent vertex, polygon, mesh, and import-result types. `BlendMeshExtractor.kt` converts already-decoded MVert/MLoop/MPoly-style records into that representation, with checks for non-finite coordinates, out-of-range loop spans, invalid vertex indices, and conservative topology limits. Synthetic unit tests cover a valid triangle and malformed vertex data.
+
+This is deliberately only the normalization boundary. The extractor does not yet resolve Mesh pointers to their vertex/loop/polygon datablocks, and no imported mesh is rendered in the viewport. The next implementation step is a bounded, type-checked datablock linker that resolves stored file addresses to records, followed by fixture-backed tests against real `.blend` files from Blender 3.x and 4.x.

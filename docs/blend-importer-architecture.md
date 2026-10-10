@@ -236,3 +236,10 @@ This is deliberately only the normalization boundary. The extractor does not yet
 `BlendDatablockDecoder.decodeRecordsAtAddress` now resolves a stored address only when it lies within an indexed block, aligns to the expected SDNA record size, matches the expected type, and stays within the declared count and payload bounds. `BlendMeshDatablockLinker.kt` uses this for direct `Mesh.mvert`, `Mesh.mloop`, and `Mesh.mpoly` pointers when those fields exist and decode cleanly. The Android inspection screen reports how many meshes normalize and how many are skipped.
 
 This recognizer is intentionally not a universal Blender mesh reader. Files whose Mesh geometry is represented through newer or different CustomData layouts will be reported as unsupported by this path rather than guessed. Synthetic address-resolution tests cover alignment and type checks; real Blender fixture validation is still required before claiming import support.
+
+
+## Object-transform groundwork
+
+`SomaObjectTransform.kt` now provides a bounded normalization-stage helper for Blender's decoded 4×4 `Object.obmat` matrix. It accepts exactly 16 finite numeric values, checks the final row is affine, applies rotation/scale/translation to mesh vertices, and rejects malformed matrices or non-finite output. Unit tests cover translation + non-uniform scale and invalid input.
+
+**Important:** this helper is not yet wired into the import path. The next step is to retain each mesh datablock's file address through normalization, link `Object.data` to the exact mesh datablock, and then apply the corresponding `obmat`. This identity-preserving mapping is necessary to avoid applying the wrong transform when a scene contains duplicate mesh names, skipped meshes, or multiple objects sharing one mesh datablock. The viewport currently displays normalized mesh-local coordinates until that link is completed.

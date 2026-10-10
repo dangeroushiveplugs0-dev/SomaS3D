@@ -204,7 +204,8 @@ class MainActivity : Activity() {
                     val meshLinks = BlendMeshDatablockLinker.link(meshRecords, decoder)
                     val normalized = BlendMeshExtractor.extract(meshLinks.inputs)
                     val scene = BlendObjectMeshLinker.link(objectRecords, normalized)
-                    BlendImportSummary(decoded, meshLinks, normalized, scene)
+                    val meshLayout = BlendMeshLayoutInspector.inspect(result.schema)
+                    BlendImportSummary(decoded, meshLinks, normalized, scene, meshLayout)
                 } else null
             } else null
 

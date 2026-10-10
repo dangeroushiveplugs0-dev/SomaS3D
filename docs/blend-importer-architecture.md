@@ -4,6 +4,8 @@
 
 Stage 1 is implemented as a small Kotlin header inspector and is connected to the Android document picker. It reads only the first 12 bytes and reports whether the header signature and basic fields are valid. This is **not** a full parser: it does not extract objects or geometry, and a valid header does not guarantee the rest of a file is valid.
 
+Header-inspector unit tests cover common 32-bit / 64-bit markers, little- and big-endian markers, bad signatures, truncated input, malformed markers, and non-numeric version fields. CI runs these tests before building the debug APK.
+
 ## Goal
 
 Read Blender project files on-device and convert supported content into native, editable Soma assets. Do not execute Blender scripts, Python add-ons, or arbitrary code stored in the project.
@@ -39,8 +41,8 @@ Implemented in BlendFileInspector.kt:
 
 Remaining hardening before this stage should be considered production-ready:
 
-- Add unit tests using valid 32-bit / 64-bit headers, both byte orders, malformed markers, non-digit versions, and truncated inputs.
-- Add supported-version policy and explicit size / resource limits for later parsing stages.
+- Add fixtures from real Blender versions and compare the reported version against known metadata.
+- Add a supported-version policy and explicit size / resource limits for later parsing stages.
 - Keep failures structured rather than silently accepting malformed data.
 
 ## Stage 2 — SDNA and block reader
@@ -111,7 +113,7 @@ For every fixture, test both parsed structure and final normalized data. Include
 
 ## Incremental delivery
 
-1. Header validation and version detection — implemented, header-only.
+1. Header validation and version detection — implemented, header-only, with unit tests.
 2. Block / SDNA reader with unit tests.
 3. Static mesh and topology extraction.
 4. Per-corner UV preservation.

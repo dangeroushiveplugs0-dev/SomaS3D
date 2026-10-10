@@ -185,7 +185,14 @@ class MainActivity : Activity() {
                 result.pointerBits != null && result.littleEndian != null) {
                 val source = BlendCachedFileSource.open(cachedFile, result.pointerBits, result.littleEndian)
                 if (source != null) {
-                    BlendDatablockDecoder(result, source).decodeTypes(setOf("Object", "Mesh"), 500)
+                    val decoder = BlendDatablockDecoder(result, source)
+                    val decoded = decoder.decodeTypes(setOf("Object", "Mesh"), 500)
+                    val meshRecords = decoded.blocks
+                        .filter { it.success && it.typeName == "Mesh" }
+                        .flatMap { it.records }
+                    val linked = BlendMeshDatablockLinker.link(meshRecords, decoder)
+                    val normalized = BlendMeshExtractor.extract(linked.inputs)
+                    Triple(decoded, linked, normalized)
                 } else null
             } else null
 
@@ -195,7 +202,12 @@ class MainActivity : Activity() {
                 } ?: "SDNA schema: not available"
                 val ending = if (result.endedCleanly) "ENDB terminator found" else "File ending not validated"
                 val dataLine = targeted?.let {
-                    "\nObject/Mesh blocks: ${it.decodedBlockCount} decoded · ${it.failedBlockCount} unsupported/failed"
+                    val decoded = it.first
+                    val linked = it.second
+                    val normalized = it.third
+                    "\nObject/Mesh blocks: ${decoded.decodedBlockCount} decoded · ${decoded.failedBlockCount} unsupported/failed" +
+                        "\nNormalized meshes: ${normalized.meshes.size} · skipped ${linked.skippedMeshCount + normalized.skippedMeshCount}" +
+                        "\nLinker warnings: ${linked.warnings.size} · mesh warnings: ${normalized.warnings.size}"
                 } ?: "\nObject/Mesh decoding unavailable"
                 statusText.text = "$displayName\nBlender ${result.version ?: "unknown"} · ${result.pointerBits ?: "?"}-bit\nBlocks: ${result.blocks.size} · $schemaLine\n$ending$dataLine\n${result.message}"
             }

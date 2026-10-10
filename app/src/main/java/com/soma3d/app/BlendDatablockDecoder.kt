@@ -96,6 +96,92 @@ class BlendDatablockDecoder(
         )
     }
 
+
+    data class AddressDecodedRecords(
+        val block: BlendBlockReader.BlockSummary?,
+        val firstRecordIndex: Long,
+        val records: List<BlendStructDecoder.DecodedRecord>,
+        val success: Boolean,
+        val message: String
+    )
+
+    /** Resolves a stored file address to a bounded run of records of an expected SDNA type. */
+    fun decodeRecordsAtAddress(
+        fileAddress: Long,
+        expectedType: String,
+        recordCount: Int
+    ): AddressDecodedRecords {
+        if (fileAddress <= 0L || expectedType.isBlank() ||
+            recordCount < 0 || recordCount > maxRecordsPerBlock) {
+            return addressFailure(null, 0L, "Address or record count is outside safe limits.")
+        }
+        if (recordCount == 0) {
+            return AddressDecodedRecords(null, 0L, emptyList(), true, "No records requested.")
+        }
+        val schema = scan.schema
+            ?: return addressFailure(null, 0L, "SDNA schema is unavailable.")
+        val entry = addressIndex.index.findContaining(fileAddress)
+            ?: return addressFailure(null, 0L, "Stored address is not inside an indexed datablock.")
+        val block = entry.block
+        if (block.sdnaIndex < 0L || block.sdnaIndex >= schema.structs.size.toLong()) {
+            return addressFailure(block, 0L, "Target block has an invalid SDNA index.")
+        }
+        val actualType = schema.structs[block.sdnaIndex.toInt()].typeName
+        if (actualType != expectedType) {
+            return addressFailure(block, 0L, "Expected $expectedType records, but address resolves to $actualType.")
+        }
+        val layout = BlendStructDecoder.layout(schema, actualType, scan.pointerBits ?: 0)
+        if (!layout.supported || layout.byteSize <= 0) {
+            return addressFailure(block, 0L, "Target record layout is unsupported: ${layout.message}")
+        }
+        val byteOffset = fileAddress - entry.startAddress
+        if (byteOffset % layout.byteSize.toLong() != 0L) {
+            return addressFailure(block, 0L, "Stored address is not aligned to a $actualType record.")
+        }
+        val firstRecord = byteOffset / layout.byteSize.toLong()
+        val requestedEnd = try {
+            Math.addExact(firstRecord, recordCount.toLong())
+        } catch (_: ArithmeticException) {
+            return addressFailure(block, firstRecord, "Requested record range overflowed.")
+        }
+        if (firstRecord < 0L || requestedEnd > block.count) {
+            return addressFailure(block, firstRecord, "Requested records exceed the target block's declared count.")
+        }
+        val byteCount = try {
+            Math.multiplyExact(recordCount.toLong(), layout.byteSize.toLong())
+        } catch (_: ArithmeticException) {
+            return addressFailure(block, firstRecord, "Requested byte range overflowed.")
+        }
+        if (byteOffset > block.payloadBytes || byteCount > block.payloadBytes - byteOffset ||
+            byteOffset > Int.MAX_VALUE || byteCount > Int.MAX_VALUE) {
+            return addressFailure(block, firstRecord, "Requested records are outside the target payload.")
+        }
+        val payloadResult = source.readPayload(block, maxPayloadBytes)
+        val payload = payloadResult.payload
+            ?: return addressFailure(block, firstRecord, payloadResult.message)
+        val start = byteOffset.toInt()
+        val end = start.toLong() + byteCount
+        if (end > payload.size.toLong()) {
+            return addressFailure(block, firstRecord, "Requested records exceed the retrieved payload.")
+        }
+        val decoded = BlendStructDecoder.decodeRecords(
+            schema = schema,
+            sdnaIndex = block.sdnaIndex,
+            count = recordCount.toLong(),
+            payload = payload.copyOfRange(start, end.toInt()),
+            pointerBits = scan.pointerBits ?: 0,
+            littleEndian = scan.littleEndian ?: true,
+            maxRecords = maxRecordsPerBlock
+        )
+        return AddressDecodedRecords(block, firstRecord, decoded.records, decoded.success, decoded.message)
+    }
+
+    private fun addressFailure(
+        block: BlendBlockReader.BlockSummary?,
+        firstRecord: Long,
+        message: String
+    ) = AddressDecodedRecords(block, firstRecord, emptyList(), false, message)
+
     fun findBlockContaining(fileAddress: Long): BlendBlockReader.BlockSummary? =
         addressIndex.index.findContaining(fileAddress)?.block
 

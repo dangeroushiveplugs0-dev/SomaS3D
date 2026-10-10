@@ -49,7 +49,7 @@ class MainActivity : Activity() {
             setBackgroundColor(Color.argb(230, 25, 28, 35))
         }
         val status = TextView(this).apply {
-            text = "TAP OBJECT  •  DRAG ORBIT"
+            text = "TAP TO SELECT / DESELECT  •  DRAG ORBIT"
             setTextColor(Color.rgb(177, 188, 204))
             textSize = 9f
             letterSpacing = 0.02f
@@ -61,16 +61,10 @@ class MainActivity : Activity() {
         selectionModeButton = toolButton("OBJECT") {
             val faceMode = viewport.toggleSelectionMode()
             selectionModeButton.text = if (faceMode) "FACE" else "OBJECT"
-            status.text = if (faceMode) "TAP FACES  •  DRAG ORBIT" else "TAP OBJECT  •  DRAG ORBIT"
+            status.text = if (faceMode) "TAP FACES TO ADD / REMOVE  •  DRAG ORBIT" else "TAP OBJECTS TO ADD / REMOVE  •  DRAG ORBIT"
         }
         bottom.addView(selectionModeButton)
 
-        lateinit var multiSelectButton: Button
-        multiSelectButton = toolButton("MULTI OFF") {
-            val enabled = viewport.toggleMultiSelection()
-            multiSelectButton.text = if (enabled) "MULTI ON" else "MULTI OFF"
-        }
-        bottom.addView(multiSelectButton)
         root.addView(bottom, FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM))
         setContentView(root)
     }

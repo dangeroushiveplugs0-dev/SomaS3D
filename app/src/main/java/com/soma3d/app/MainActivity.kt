@@ -218,6 +218,7 @@ class MainActivity : Activity() {
                     "\nObject/Mesh blocks: ${it.decoded.decodedBlockCount} decoded · ${it.decoded.failedBlockCount} unsupported/failed" +
                         "\nNormalized meshes: ${it.normalized.meshes.size} · skipped ${it.meshLinks.skippedMeshCount + it.normalized.skippedMeshCount}" +
                         "\nScene objects: ${it.scene.linkedObjectCount} linked · ${it.scene.skippedObjectCount} skipped" +
+                        "\nMesh storage: ${it.meshLayout.kind}" +
                         "\nWarnings: mesh links ${it.meshLinks.warnings.size} · scene ${it.scene.warnings.size} · mesh data ${it.normalized.warnings.size}"
                 } ?: "\nObject/Mesh decoding unavailable"
                 viewport.setMeshes(targeted?.scene?.meshes ?: emptyList())

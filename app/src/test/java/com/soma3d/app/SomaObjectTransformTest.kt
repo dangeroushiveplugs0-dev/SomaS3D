@@ -15,10 +15,10 @@ class SomaObjectTransformTest {
             polygons = emptyList()
         )
         val matrix = listOf(
-            2.0, 0.0, 0.0, 10.0,
-            0.0, 3.0, 0.0, 20.0,
-            0.0, 0.0, 4.0, 30.0,
-            0.0, 0.0, 0.0, 1.0
+            2.0, 0.0, 0.0, 0.0,
+            0.0, 3.0, 0.0, 0.0,
+            0.0, 0.0, 4.0, 0.0,
+            10.0, 20.0, 30.0, 1.0
         )
 
         val result = SomaObjectTransform.apply(mesh, matrix)

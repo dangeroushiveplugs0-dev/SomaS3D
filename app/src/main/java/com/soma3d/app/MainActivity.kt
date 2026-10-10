@@ -42,15 +42,36 @@ class MainActivity : Activity() {
         top.addView(toolButton("EDGE") { viewport.toggleEdges() })
         root.addView(top, FrameLayout.LayoutParams(-1, dp(54), Gravity.TOP))
 
-        val status = TextView(this).apply {
-            text = "TAP OBJECT TO SELECT  •  DRAG TO ORBIT  •  PINCH TO ZOOM"
-            setTextColor(Color.rgb(177, 188, 204))
-            textSize = 10f
-            letterSpacing = 0.05f
-            setPadding(dp(14), dp(12), dp(14), dp(12))
-            setBackgroundColor(Color.argb(220, 25, 28, 35))
+        val bottom = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(8), dp(2), dp(8), dp(2))
+            setBackgroundColor(Color.argb(230, 25, 28, 35))
         }
-        root.addView(status, FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM))
+        val status = TextView(this).apply {
+            text = "TAP OBJECT  •  DRAG ORBIT"
+            setTextColor(Color.rgb(177, 188, 204))
+            textSize = 9f
+            letterSpacing = 0.02f
+            setPadding(dp(4), dp(8), dp(4), dp(8))
+        }
+        bottom.addView(status, LinearLayout.LayoutParams(0, -2, 1f))
+
+        lateinit var selectionModeButton: Button
+        selectionModeButton = toolButton("OBJECT") {
+            val faceMode = viewport.toggleSelectionMode()
+            selectionModeButton.text = if (faceMode) "FACE" else "OBJECT"
+            status.text = if (faceMode) "TAP FACES  •  DRAG ORBIT" else "TAP OBJECT  •  DRAG ORBIT"
+        }
+        bottom.addView(selectionModeButton)
+
+        lateinit var multiSelectButton: Button
+        multiSelectButton = toolButton("MULTI OFF") {
+            val enabled = viewport.toggleMultiSelection()
+            multiSelectButton.text = if (enabled) "MULTI ON" else "MULTI OFF"
+        }
+        bottom.addView(multiSelectButton)
+        root.addView(bottom, FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM))
         setContentView(root)
     }
 

@@ -44,7 +44,7 @@ class MainActivity : Activity() {
             setTypeface(null, android.graphics.Typeface.BOLD)
         })
         titleStack.addView(TextView(this).apply {
-            text = "VIEWPORT FOUNDATION"
+            text = "VIEWPORT + BLEND INSPECTOR"
             setTextColor(android.graphics.Color.rgb(135, 149, 169))
             textSize = 10f
         })
@@ -65,10 +65,10 @@ class MainActivity : Activity() {
             setBackgroundColor(android.graphics.Color.rgb(25, 29, 37))
         }
         statusText = TextView(this).apply {
-            text = "Scene empty · choose a .blend file to validate its header"
+            text = "Scene empty · choose a .blend file to inspect its block structure"
             setTextColor(android.graphics.Color.rgb(168, 181, 198))
             textSize = 12f
-            maxLines = 3
+            maxLines = 5
             setPadding(dp(2), 0, dp(2), dp(8))
         }
         bottom.addView(statusText)
@@ -82,7 +82,7 @@ class MainActivity : Activity() {
         buttons.addView(makeButton("ShofterUI") {
             Toast.makeText(
                 this@MainActivity,
-                "ShofterUI is planned; normalized character data integration comes next.",
+                "ShofterUI will consume normalized meshes, shape keys, and preserved rig controls.",
                 Toast.LENGTH_SHORT
             ).show()
         }, LinearLayout.LayoutParams(0, dp(46), 1f))
@@ -136,18 +136,42 @@ class MainActivity : Activity() {
             return
         }
 
-        selectedBlendUri = if (inspection.valid) uri else null
-        statusText.text = if (inspection.valid) {
-            "Header validated: $displayName\n${inspection.message}"
-        } else {
-            "Not imported: $displayName\n${inspection.message}"
+        if (!inspection.valid) {
+            selectedBlendUri = null
+            statusText.text = "Rejected: $displayName\n${inspection.message}"
+            Toast.makeText(this, "This file did not pass Blender header validation.", Toast.LENGTH_LONG).show()
+            return
         }
-        Toast.makeText(
-            this,
-            if (inspection.valid) "Blender header validated; mesh parsing is not implemented yet."
-            else "This file did not pass Blender header validation.",
-            Toast.LENGTH_LONG
-        ).show()
+
+        selectedBlendUri = uri
+        statusText.text = "Header validated: $displayName\n${inspection.message}\nScanning blocks and SDNA schema…"
+        scanBlendStructure(uri, displayName)
+    }
+
+    private fun scanBlendStructure(uri: Uri, displayName: String) {
+        Thread {
+            val result = try {
+                val stream = contentResolver.openInputStream(uri)
+                if (stream == null) null else stream.use { BlendBlockReader.read(it) }
+            } catch (error: Exception) {
+                runOnUiThread {
+                    statusText.text = "Header validated: $displayName\nBlock scan failed: ${error.message ?: "file access error"}"
+                }
+                return@Thread
+            }
+
+            runOnUiThread {
+                if (result == null) {
+                    statusText.text = "Header validated: $displayName\nCould not reopen the selected document for block scanning."
+                } else {
+                    val schemaLine = result.schema?.let {
+                        "SDNA: ${it.types.size} types · ${it.structs.size} structures"
+                    } ?: "SDNA schema: not available"
+                    val ending = if (result.endedCleanly) "ENDB terminator found" else "File ending not validated"
+                    statusText.text = "$displayName\nBlender ${result.version ?: "unknown"} · ${result.pointerBits ?: "?"}-bit\nBlocks: ${result.blocks.size} · $schemaLine\n$ending\n${result.message}"
+                }
+            }
+        }.start()
     }
 
     private fun queryDisplayName(uri: Uri): String? {

@@ -107,7 +107,6 @@ object BlendBlockReader {
                         ?: return Result(true, version, pointerBits, littleEndian, blocks, schema, false,
                             "DNA1 payload is truncated.")
                     schema = parseSchema(payload, littleEndian)
-                    streamOffset = Math.addExact(streamOffset, length)
                     if (schema == null) {
                         return Result(true, version, pointerBits, littleEndian, blocks, null, false,
                             "DNA1 block was found, but its SDNA schema is malformed or unsupported.")
@@ -118,9 +117,7 @@ object BlendBlockReader {
                             "Block " + code + " payload is truncated.")
                     }
                 }
-
-                    streamOffset = Math.addExact(streamOffset, length)
-                }
+                streamOffset = Math.addExact(streamOffset, length)
 
                 blocks.add(BlockSummary(code, length, oldAddress, sdnaIndex, count, payloadOffset))
                 if (code == "ENDB") {

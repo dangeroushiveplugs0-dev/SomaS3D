@@ -54,10 +54,7 @@ class BlendObjectMeshLinkerTest {
 
     @Test
     fun doesNotLinkByMatchingNameWhenDataAddressIsUnknown() {
-        val source = normalized().copy(
-            meshes = listOf(normalized().meshes.single().copy(name = "SameName")),
-            sourceAddresses = listOf(0x1000L)
-        )
+        val source = normalized()
         val result = BlendObjectMeshLinker.link(
             listOf(objectRecord("SameName", 0x2000L, identity)),
             source

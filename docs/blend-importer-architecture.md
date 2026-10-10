@@ -238,8 +238,10 @@ This is deliberately only the normalization boundary. The extractor does not yet
 This recognizer is intentionally not a universal Blender mesh reader. Files whose Mesh geometry is represented through newer or different CustomData layouts will be reported as unsupported by this path rather than guessed. Synthetic address-resolution tests cover alignment and type checks; real Blender fixture validation is still required before claiming import support.
 
 
-## Object-transform groundwork
+## Object-to-mesh scene linking
 
-`SomaObjectTransform.kt` now provides a bounded normalization-stage helper for Blender's decoded 4×4 `Object.obmat` matrix. It accepts exactly 16 finite numeric values, checks the final row is affine, applies rotation/scale/translation to mesh vertices, and rejects malformed matrices or non-finite output. Unit tests cover translation + non-uniform scale and invalid input.
+`BlendObjectMeshLinker.kt` now connects decoded `Object.data` pointers to normalized mesh records using preserved Blender file addresses, not display names. Each object gets a separate mesh instance, so objects sharing one mesh datablock can retain distinct transforms. `SomaObjectTransform.kt` applies Blender's decoded 4×4 matrix using the file's matrix memory layout and rejects incomplete, non-finite, or unsupported affine matrices.
 
-**Important:** this helper is not yet wired into the import path. The next step is to retain each mesh datablock's file address through normalization, link `Object.data` to the exact mesh datablock, and then apply the corresponding `obmat`. This identity-preserving mapping is necessary to avoid applying the wrong transform when a scene contains duplicate mesh names, skipped meshes, or multiple objects sharing one mesh datablock. The viewport currently displays normalized mesh-local coordinates until that link is completed.
+The import screen now sends linked scene instances to the viewport and reports object-link counts and warnings. If no object instances can be resolved safely, it falls back to normalized mesh-local geometry so a failed object link does not hide all inspectable geometry. Unit tests cover address-only linking, two transformed instances sharing one mesh, unknown addresses, and malformed transforms.
+
+This is still a conservative first path, not broad Blender compatibility. The current mesh recognizer only handles direct legacy-style `Mesh.mvert`, `Mesh.mloop`, and `Mesh.mpoly` pointers; newer CustomData layouts and many Blender features are not yet implemented. Real `.blend` fixtures from Blender 3.x and 4.x are still required before claiming version support.

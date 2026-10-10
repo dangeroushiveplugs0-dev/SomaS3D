@@ -18,6 +18,8 @@ Header validation and version detection [implemented]
 ↓
 Outer block reader and SDNA schema reader [initial implementation]
 ↓
+Safe address-range indexing and conservative SDNA struct decoding [initial implementation]
+↓
 Datablock linking and object / mesh extraction [next]
 ↓
 Normalized intermediate representation (Soma IR)
@@ -57,17 +59,22 @@ Important limitations:
 - It does not yet resolve stored datablock addresses into object relationships or use the SDNA schema to decode arbitrary block payloads.
 - It does not extract meshes, armatures, shape keys, drivers, or constraints yet.
 - 64-bit stored addresses are retained only as numeric metadata; they are never dereferenced as process pointers.
+- `BlendBlockIndex.kt` builds a sorted address-range index, rejects ambiguous overlaps, and refuses zero/overflowing ranges.
+- `BlendStructDecoder.kt` computes candidate field offsets from SDNA types/declarations and accepts a layout only when the computed size exactly matches the SDNA TLEN. It can decode bounded primitive/pointer fields and numeric arrays from an already-loaded block payload.
+- This decoder is intentionally conservative: pointer-to-array declarations and layouts that do not match TLEN are rejected. Nested struct fields can contribute to layout calculation but are not yet expanded into nested decoded values.
+- The scanner still skips non-DNA payloads; the payload retrieval/import pipeline must be added before these modules can decode a selected real datablock end-to-end.
 - Resource limits and malformed-file handling need continued fuzzing and real-file tests.
 
 ## Stage 3 — Datablock linking and static mesh extraction
 
 Next:
 
-1. Resolve datablock references through a safe address-to-block index.
-2. Decode supported structures using SDNA field names and type sizes, never guessed fixed offsets.
-3. Identify objects and their mesh data.
-4. Extract vertex positions and polygon topology.
-5. Add a minimal mesh renderer and fit the camera to imported bounds.
+1. Use `BlendBlockIndex` to resolve a stored file address to a non-overlapping block range.
+2. Add bounded payload retrieval from a seekable or cache-backed file source; the current scanner deliberately skips non-DNA payloads.
+3. Decode supported structures through `BlendStructDecoder`, accepting only layouts validated against SDNA TLEN.
+4. Identify objects and their mesh data using decoded datablock relationships.
+5. Extract vertex positions and polygon topology.
+6. Add a minimal mesh renderer and fit the camera to imported bounds.
 
 Use checked arithmetic for offsets, counts, and byte lengths. Do not allocate arrays directly from unchecked file-provided counts.
 
@@ -147,8 +154,9 @@ For every fixture, test parsed structure and final normalized data. Include reso
 
 1. Header validation — implemented and unit tested.
 2. Outer block scanning and initial SDNA parsing — implemented; synthetic test only.
-3. Real-file validation across supported Blender versions.
-4. Datablock linking and static mesh extraction.
+3. Safe address-range indexing and conservative SDNA layout decoding — initial modules and synthetic tests added.
+4. Payload retrieval and real-file validation across supported Blender versions.
+5. Datablock linking and static mesh extraction.
 5. Minimal mesh renderer and camera framing.
 6. Per-corner UVs and object transforms.
 7. Armature and skinning weights.

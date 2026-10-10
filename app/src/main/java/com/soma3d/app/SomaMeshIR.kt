@@ -22,5 +22,6 @@ data class SomaMeshImportResult(
     val meshes: List<SomaMesh>,
     val warnings: List<String>,
     val skippedMeshCount: Int,
-    val message: String
+    val message: String,
+    val sourceAddresses: List<Long?> = emptyList()
 )

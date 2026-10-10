@@ -80,6 +80,19 @@ Important limitations:
 - The scanner still skips non-DNA payloads; the payload retrieval/import pipeline must be added before these modules can decode a selected real datablock end-to-end.
 - Resource limits and malformed-file handling need continued fuzzing and real-file tests.
 
+## Current implementation status
+
+The importer now has a cache-backed decoding path:
+
+1. Copy the selected Android document to a bounded temporary cache in chunks (current hard cap: 1 GiB).
+2. Scan block headers and retain the SDNA schema while recording each block's payload offset.
+3. Read individual block payloads on demand with per-payload limits and header consistency checks.
+4. Decode selected datablock records using the SDNA structure table.
+5. Use the stored-address index only for file-format address resolution, never as native pointers.
+6. The current UI probes blocks whose SDNA type is `Object` or `Mesh` and reports decoded versus unsupported counts.
+
+This is still a generic record-decoding stage, **not yet semantic mesh extraction or viewport import**. SDNA layout validation deliberately fails closed when computed layouts do not match declared TLEN sizes. Some real Blender ABI/layout cases may need explicit, fixture-backed rules before their records can be decoded.
+
 ## Stage 3 — Datablock linking and static mesh extraction
 
 Next:

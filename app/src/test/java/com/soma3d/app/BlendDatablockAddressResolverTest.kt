@@ -78,6 +78,6 @@ class BlendDatablockAddressResolverTest {
     }
 
     private fun writeLong(out: ByteArrayOutputStream, value: Long) {
-        repeat(8) { index -> out.write(((value ushr (8 * index)) and 0xff).toInt()) }
+        repeat(8) { index -> out.write(((value ushr (8 * index)) and 0xffL).toInt()) }
     }
 }

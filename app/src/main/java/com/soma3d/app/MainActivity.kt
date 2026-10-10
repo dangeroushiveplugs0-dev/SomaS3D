@@ -18,7 +18,8 @@ class MainActivity : Activity() {
         val decoded: BlendDatablockDecoder.DecodeSummary,
         val meshLinks: BlendMeshDatablockLinker.LinkResult,
         val normalized: SomaMeshImportResult,
-        val scene: BlendObjectMeshLinker.Result
+        val scene: BlendObjectMeshLinker.Result,
+        val meshLayout: BlendMeshLayoutInspector.Report
     )
 
     private lateinit var viewport: ViewportView

@@ -56,8 +56,12 @@ class BlendDatablockDecoder(
             littleEndian = scan.littleEndian,
             maxRecords = maxRecordsPerBlock
         )
-        return DecodedBlock(block, schema.structs[block.sdnaIndex.toInt()].typeName,
-            decoded.records, decoded.success, decoded.message)
+        val typeName = schema.structs[block.sdnaIndex.toInt()].typeName
+        val layout = BlendStructDecoder.layout(schema, typeName, scan.pointerBits)
+        val addressed = if (decoded.success && layout.supported) decoded.records.mapIndexed { index, record ->
+            record.copy(fileAddress = recordAddress(block.oldAddress, index, layout.byteSize))
+        } else decoded.records
+        return DecodedBlock(block, typeName, addressed, decoded.success, decoded.message)
     }
 
     /** Decodes only blocks whose SDNA types match the requested names. */
@@ -173,7 +177,16 @@ class BlendDatablockDecoder(
             littleEndian = scan.littleEndian ?: true,
             maxRecords = maxRecordsPerBlock
         )
-        return AddressDecodedRecords(block, firstRecord, decoded.records, decoded.success, decoded.message)
+        val addressed = if (decoded.success) decoded.records.mapIndexed { index, record ->
+            record.copy(fileAddress = recordAddress(fileAddress, index, layout.byteSize))
+        } else decoded.records
+        return AddressDecodedRecords(block, firstRecord, addressed, decoded.success, decoded.message)
+    }
+
+    private fun recordAddress(base: Long, index: Int, recordSize: Int): Long? = try {
+        Math.addExact(base, Math.multiplyExact(index.toLong(), recordSize.toLong()))
+    } catch (_: ArithmeticException) {
+        null
     }
 
     private fun addressFailure(

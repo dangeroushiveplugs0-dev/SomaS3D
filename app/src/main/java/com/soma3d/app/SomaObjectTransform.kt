@@ -4,7 +4,7 @@ package com.soma3d.app
  * Applies a decoded Blender Object.obmat matrix to normalized mesh vertices.
  *
  * Blender stores this 4x4 matrix as 16 row-major floats with translation in
- * indices 3, 7, and 11. This helper accepts only a complete finite matrix;
+ * indices 12, 13, and 14. This helper accepts only a complete finite matrix;
  * absent or malformed matrices are never silently treated as identity.
  */
 object SomaObjectTransform {
@@ -27,14 +27,14 @@ object SomaObjectTransform {
             return Result(null, false, "Object transform contains a non-numeric or non-finite value.")
         }
         val m = matrix.filterNotNull()
-        if (kotlin.math.abs(m[12]) > 1e-6 || kotlin.math.abs(m[13]) > 1e-6 ||
-            kotlin.math.abs(m[14]) > 1e-6 || kotlin.math.abs(m[15] - 1.0) > 1e-6) {
+        if (kotlin.math.abs(m[3]) > 1e-6 || kotlin.math.abs(m[7]) > 1e-6 ||
+            kotlin.math.abs(m[11]) > 1e-6 || kotlin.math.abs(m[15] - 1.0) > 1e-6) {
             return Result(null, false, "Object matrix is not a supported affine transform.")
         }
         val transformed = mesh.vertices.map { point ->
-            val x = m[0] * point.x + m[1] * point.y + m[2] * point.z + m[3]
-            val y = m[4] * point.x + m[5] * point.y + m[6] * point.z + m[7]
-            val z = m[8] * point.x + m[9] * point.y + m[10] * point.z + m[11]
+            val x = m[0] * point.x + m[4] * point.y + m[8] * point.z + m[12]
+            val y = m[1] * point.x + m[5] * point.y + m[9] * point.z + m[13]
+            val z = m[2] * point.x + m[6] * point.y + m[10] * point.z + m[14]
             SomaVector3(x, y, z)
         }
         if (transformed.any { !it.x.isFinite() || !it.y.isFinite() || !it.z.isFinite() }) {

@@ -10,7 +10,6 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
-import java.util.Locale
 
 class MainActivity : Activity() {
     private lateinit var viewport: ViewportView
@@ -66,10 +65,10 @@ class MainActivity : Activity() {
             setBackgroundColor(android.graphics.Color.rgb(25, 29, 37))
         }
         statusText = TextView(this).apply {
-            text = "Scene empty · importer not connected"
+            text = "Scene empty · choose a .blend file to validate its header"
             setTextColor(android.graphics.Color.rgb(168, 181, 198))
             textSize = 12f
-            maxLines = 2
+            maxLines = 3
             setPadding(dp(2), 0, dp(2), dp(8))
         }
         bottom.addView(statusText)
@@ -83,7 +82,7 @@ class MainActivity : Activity() {
         buttons.addView(makeButton("ShofterUI") {
             Toast.makeText(
                 this@MainActivity,
-                "ShofterUI is planned; character data integration comes next.",
+                "ShofterUI is planned; normalized character data integration comes next.",
                 Toast.LENGTH_SHORT
             ).show()
         }, LinearLayout.LayoutParams(0, dp(46), 1f))
@@ -116,11 +115,39 @@ class MainActivity : Activity() {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode != pickBlendFile || resultCode != RESULT_OK) return
         val uri = data?.data ?: return
-        selectedBlendUri = uri
-        val displayName = queryDisplayName(uri) ?: (uri.lastPathSegment ?: "Selected .blend file")
-        statusText.text = String.format(Locale.getDefault(),
-            "Selected: %s · parsing not implemented yet", displayName)
-        Toast.makeText(this, "File selected. Import parser is the next stage.", Toast.LENGTH_LONG).show()
+        val displayName = queryDisplayName(uri) ?: (uri.lastPathSegment ?: "Selected file")
+        val inspection = try {
+            val stream = contentResolver.openInputStream(uri)
+            if (stream == null) {
+                null
+            } else {
+                stream.use { BlendFileInspector.inspect(it, queryFileSize(uri)) }
+            }
+        } catch (error: Exception) {
+            selectedBlendUri = null
+            statusText.text = "Could not read $displayName · ${error.message ?: "file access failed"}"
+            Toast.makeText(this, "Unable to read selected file", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        if (inspection == null) {
+            selectedBlendUri = null
+            statusText.text = "Could not open $displayName · the document provider returned no data"
+            return
+        }
+
+        selectedBlendUri = if (inspection.valid) uri else null
+        statusText.text = if (inspection.valid) {
+            "Header validated: $displayName\n${inspection.message}"
+        } else {
+            "Not imported: $displayName\n${inspection.message}"
+        }
+        Toast.makeText(
+            this,
+            if (inspection.valid) "Blender header validated; mesh parsing is not implemented yet."
+            else "This file did not pass Blender header validation.",
+            Toast.LENGTH_LONG
+        ).show()
     }
 
     private fun queryDisplayName(uri: Uri): String? {
@@ -128,6 +155,17 @@ class MainActivity : Activity() {
         cursor.use {
             val nameIndex = it.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
             if (nameIndex >= 0 && it.moveToFirst()) return it.getString(nameIndex)
+        }
+        return null
+    }
+
+    private fun queryFileSize(uri: Uri): Long? {
+        val cursor = contentResolver.query(uri, null, null, null, null) ?: return null
+        cursor.use {
+            val sizeIndex = it.getColumnIndex(android.provider.OpenableColumns.SIZE)
+            if (sizeIndex >= 0 && it.moveToFirst() && !it.isNull(sizeIndex)) {
+                return it.getLong(sizeIndex).takeIf { size -> size >= 0L }
+            }
         }
         return null
     }

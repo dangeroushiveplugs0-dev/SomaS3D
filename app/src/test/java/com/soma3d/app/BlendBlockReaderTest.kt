@@ -2,6 +2,7 @@ package com.soma3d.app
 
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.nio.charset.StandardCharsets
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -20,6 +21,7 @@ class BlendBlockReaderTest {
         assertTrue(result.endedCleanly)
         assertEquals(2, result.blocks.size)
         assertEquals("DNA1", result.blocks[0].code)
+        assertEquals(36L, result.blocks[0].payloadOffset)
         assertEquals("ENDB", result.blocks[1].code)
         assertNotNull(result.schema)
     }
@@ -40,6 +42,25 @@ class BlendBlockReaderTest {
         assertTrue(result.validHeader)
         assertFalse(result.endedCleanly)
         assertTrue(result.message.contains("Unexpected end"))
+    }
+
+
+    @Test
+    fun readsScannedPayloadFromCacheWithoutLoadingWholeFile() {
+        val bytes = minimalBlendFile()
+        val scan = BlendBlockReader.read(ByteArrayInputStream(bytes))
+        val directory = createTempDir(prefix = "blend-cache-test")
+        try {
+            val cached = BlendCachedFileSource.copyToCache(ByteArrayInputStream(bytes), directory)
+            assertNotNull(cached)
+            val source = BlendCachedFileSource.open(cached!!, 64, true)
+            assertNotNull(source)
+            val result = source!!.readPayload(scan.blocks.first { it.code == "DNA1" })
+            assertTrue(result.message, result.success)
+            assertEquals(scan.blocks.first { it.code == "DNA1" }.payloadBytes.toInt(), result.payload!!.size)
+        } finally {
+            directory.deleteRecursively()
+        }
     }
 
     private fun minimalBlendFile(): ByteArray {

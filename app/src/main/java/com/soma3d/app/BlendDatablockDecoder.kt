@@ -60,6 +60,26 @@ class BlendDatablockDecoder(
             decoded.records, decoded.success, decoded.message)
     }
 
+    /** Decodes only blocks whose SDNA types match the requested names. */
+    fun decodeTypes(typeNames: Set<String>, maxBlocks: Int = 20_000): DecodeSummary {
+        val schema = scan.schema
+            ?: return DecodeSummary(emptyList(), 0, 0, 0, "SDNA schema is unavailable.")
+        val candidates = scan.blocks.filter { block ->
+            block.code != "DNA1" && block.code != "ENDB" &&
+                block.sdnaIndex >= 0L && block.sdnaIndex < schema.structs.size.toLong() &&
+                schema.structs[block.sdnaIndex.toInt()].typeName in typeNames
+        }
+        val selected = candidates.take(maxBlocks.coerceAtLeast(0))
+        val results = selected.map { decodeBlock(it) }
+        val successful = results.count { it.success }
+        val failed = results.count { !it.success }
+        val skipped = candidates.size - selected.size
+        return DecodeSummary(
+            results, successful, skipped, failed,
+            "Decoded $successful requested-type block(s); $failed failed or unsupported; $skipped not attempted."
+        )
+    }
+
     /** Decodes blocks conservatively; malformed or unsupported blocks are reported individually. */
     fun decodeAll(maxBlocks: Int = 20_000): DecodeSummary {
         val candidates = scan.blocks.filter { it.code != "DNA1" && it.code != "ENDB" }

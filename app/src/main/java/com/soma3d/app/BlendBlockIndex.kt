@@ -2,11 +2,9 @@ package com.soma3d.app
 
 /**
  * Safe lookup over Blender's stored datablock address ranges.
- *
- * These are file-format addresses only. They are never dereferenced as native pointers.
- * A range is indexed only when its start and end can be represented without overflow.
+ * These are file-format addresses only; they are never dereferenced as native pointers.
  */
-class BlendBlockIndex(blocks: List<BlendBlockReader.BlockSummary>) {
+class BlendBlockIndex private constructor(private val entries: List<Entry>) {
     data class Entry(
         val block: BlendBlockReader.BlockSummary,
         val startAddress: Long,
@@ -14,27 +12,12 @@ class BlendBlockIndex(blocks: List<BlendBlockReader.BlockSummary>) {
     )
 
     data class BuildResult(
-        val index: BlendBlockIndex?,
+        val index: BlendBlockIndex,
         val rejectedBlocks: Int,
         val message: String
     )
 
-    private val entries: List<Entry>
-    private val starts: LongArray
-
-    private constructor(entries: List<Entry>, marker: Unit) : this(emptyList()) {
-        // The private constructor is intentionally not used; see create() below.
-    }
-
-    init {
-        entries = emptyList()
-        starts = LongArray(0)
-    }
-
-    private constructor(entries: List<Entry>) : this(emptyList()) {
-        this.entries = entries
-        this.starts = LongArray(entries.size) { entries[it].startAddress }
-    }
+    private val starts = LongArray(entries.size) { entries[it].startAddress }
 
     fun findContaining(fileAddress: Long): Entry? {
         if (fileAddress <= 0L || entries.isEmpty()) return null
@@ -67,9 +50,7 @@ class BlendBlockIndex(blocks: List<BlendBlockReader.BlockSummary>) {
                     rejected++
                     continue
                 }
-                candidates.add(
-                    Entry(block, block.oldAddress, block.oldAddress + block.payloadBytes)
-                )
+                candidates.add(Entry(block, block.oldAddress, block.oldAddress + block.payloadBytes))
             }
             candidates.sortBy { it.startAddress }
             val nonOverlapping = ArrayList<Entry>(candidates.size)

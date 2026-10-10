@@ -26,7 +26,7 @@ class BlendBlockReaderTest {
 
     @Test
     fun rejectsFileWithoutBlenderHeader() {
-        val result = BlendBlockReader.read(ByteArrayInputStream("not blender".toByteArray()))
+        val result = BlendBlockReader.read(ByteArrayInputStream("not blender!!".toByteArray()))
 
         assertFalse(result.validHeader)
         assertTrue(result.message.contains("signature"))

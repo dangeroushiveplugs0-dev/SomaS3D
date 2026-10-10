@@ -10,6 +10,8 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import java.io.File
+import java.io.FileInputStream
 
 class MainActivity : Activity() {
     private lateinit var viewport: ViewportView
@@ -150,9 +152,28 @@ class MainActivity : Activity() {
 
     private fun scanBlendStructure(uri: Uri, displayName: String) {
         Thread {
-            val result = try {
+            val importCache = File(cacheDir, "blend-imports")
+            val cachedFile = try {
                 val stream = contentResolver.openInputStream(uri)
-                if (stream == null) null else stream.use { BlendBlockReader.read(it) }
+                if (stream == null) null else stream.use {
+                    BlendCachedFileSource.copyToCache(it, importCache)
+                }
+            } catch (error: Exception) {
+                runOnUiThread {
+                    statusText.text = "Could not cache $displayName\n${error.message ?: "file access error"}"
+                }
+                return@Thread
+            }
+
+            if (cachedFile == null) {
+                runOnUiThread {
+                    statusText.text = "Could not cache $displayName\nThe file may exceed the 1 GiB import-cache limit or storage may be unavailable."
+                }
+                return@Thread
+            }
+
+            val result = try {
+                FileInputStream(cachedFile).use { BlendBlockReader.read(it) }
             } catch (error: Exception) {
                 runOnUiThread {
                     statusText.text = "Header validated: $displayName\nBlock scan failed: ${error.message ?: "file access error"}"
@@ -160,16 +181,23 @@ class MainActivity : Activity() {
                 return@Thread
             }
 
+            val targeted = if (result.validHeader && result.schema != null &&
+                result.pointerBits != null && result.littleEndian != null) {
+                val source = BlendCachedFileSource.open(cachedFile, result.pointerBits, result.littleEndian)
+                if (source != null) {
+                    BlendDatablockDecoder(result, source).decodeTypes(setOf("Object", "Mesh"), 500)
+                } else null
+            } else null
+
             runOnUiThread {
-                if (result == null) {
-                    statusText.text = "Header validated: $displayName\nCould not reopen the selected document for block scanning."
-                } else {
-                    val schemaLine = result.schema?.let {
-                        "SDNA: ${it.types.size} types · ${it.structs.size} structures"
-                    } ?: "SDNA schema: not available"
-                    val ending = if (result.endedCleanly) "ENDB terminator found" else "File ending not validated"
-                    statusText.text = "$displayName\nBlender ${result.version ?: "unknown"} · ${result.pointerBits ?: "?"}-bit\nBlocks: ${result.blocks.size} · $schemaLine\n$ending\n${result.message}"
-                }
+                val schemaLine = result.schema?.let {
+                    "SDNA: ${it.types.size} types · ${it.structs.size} structures"
+                } ?: "SDNA schema: not available"
+                val ending = if (result.endedCleanly) "ENDB terminator found" else "File ending not validated"
+                val dataLine = targeted?.let {
+                    "\nObject/Mesh blocks: ${it.decodedBlockCount} decoded · ${it.failedBlockCount} unsupported/failed"
+                } ?: "\nObject/Mesh decoding unavailable"
+                statusText.text = "$displayName\nBlender ${result.version ?: "unknown"} · ${result.pointerBits ?: "?"}-bit\nBlocks: ${result.blocks.size} · $schemaLine\n$ending$dataLine\n${result.message}"
             }
         }.start()
     }

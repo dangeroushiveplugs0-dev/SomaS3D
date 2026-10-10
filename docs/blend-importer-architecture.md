@@ -1,8 +1,8 @@
-# Blender `.blend` Importer Architecture
+# Blender .blend Importer Architecture
 
 ## Status
 
-Design specification only. The current reset branch does not yet contain an implemented `.blend` parser or conversion pipeline.
+Stage 1 is implemented as a small Kotlin header inspector and is connected to the Android document picker. It reads only the first 12 bytes and reports whether the header signature and basic fields are valid. This is **not** a full parser: it does not extract objects or geometry, and a valid header does not guarantee the rest of a file is valid.
 
 ## Goal
 
@@ -10,32 +10,42 @@ Read Blender project files on-device and convert supported content into native, 
 
 ## Pipeline
 
-```text
 .blend file
-   ↓
-File validation and version detection
-   ↓
+↓
+File validation and version detection [header-only stage implemented]
+↓
 Version-aware SDNA / block reader
-   ↓
+↓
 Blender data extraction
-   ↓
+↓
 Normalized intermediate representation (Soma IR)
-   ↓
+↓
 Capability checks and conversion diagnostics
-   ↓
+↓
 Native editable Soma asset
-```
 
 Each stage should be a small module with one responsibility. Keep binary parsing, semantic extraction, normalization, and native asset writing separate.
 
 ## Stage 1 — File validation and version detection
 
-- Validate the header and identify the file's Blender version and pointer-size / byte-order details.
-- Reject truncated files, invalid block lengths, impossible offsets, and oversized allocations.
-- Apply explicit resource limits for mobile devices.
-- Keep version-specific behavior behind a small compatibility layer.
+Implemented in BlendFileInspector.kt:
+
+- Reads only the fixed 12-byte header; it does not load the whole project into memory.
+- Checks the BLENDER signature.
+- Detects 32-bit / 64-bit pointer markers, byte-order marker, and three-digit Blender version.
+- Reports file size when the document provider exposes it.
+- Rejects short headers, invalid signatures, and malformed header markers with clear diagnostics.
+- The UI calls this result **header validated**, not **imported**.
+
+Remaining hardening before this stage should be considered production-ready:
+
+- Add unit tests using valid 32-bit / 64-bit headers, both byte orders, malformed markers, non-digit versions, and truncated inputs.
+- Add supported-version policy and explicit size / resource limits for later parsing stages.
+- Keep failures structured rather than silently accepting malformed data.
 
 ## Stage 2 — SDNA and block reader
+
+Not implemented yet.
 
 - Parse the file's block structure and SDNA schema metadata.
 - Resolve structure fields through parsed schema information instead of assuming fixed offsets across all Blender versions.
@@ -101,7 +111,7 @@ For every fixture, test both parsed structure and final normalized data. Include
 
 ## Incremental delivery
 
-1. File header validation and version detection.
+1. Header validation and version detection — implemented, header-only.
 2. Block / SDNA reader with unit tests.
 3. Static mesh and topology extraction.
 4. Per-corner UV preservation.
@@ -111,4 +121,4 @@ For every fixture, test both parsed structure and final normalized data. Include
 8. Metadata and material / texture support.
 9. Broader version coverage based on fixtures.
 
-Do not advertise general `.blend` support until the supported-version matrix and fixture tests justify that claim.
+Do not advertise general .blend support until the supported-version matrix and fixture tests justify that claim.

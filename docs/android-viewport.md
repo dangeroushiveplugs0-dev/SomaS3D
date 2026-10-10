@@ -19,3 +19,6 @@ The viewport still draws with Android Canvas and sorts polygon faces by average 
 ## Build
 
 GitHub Actions builds the Rust bridge for Android `arm64-v8a`, runs `gradle assembleDebug`, and uploads `somas3d-debug-apk`.
+
+
+Selection behavior: object and face multi-selection are always enabled. Tap an object or face to add it to the selection; tap it again to remove it. There is no multi-selection toggle.

@@ -14,6 +14,13 @@ import java.io.File
 import java.io.FileInputStream
 
 class MainActivity : Activity() {
+    private data class BlendImportSummary(
+        val decoded: BlendDatablockDecoder.DecodeSummary,
+        val meshLinks: BlendMeshDatablockLinker.LinkResult,
+        val normalized: SomaMeshImportResult,
+        val scene: BlendObjectMeshLinker.Result
+    )
+
     private lateinit var viewport: ViewportView
     private lateinit var statusText: TextView
     private var selectedBlendUri: Uri? = null
@@ -187,12 +194,16 @@ class MainActivity : Activity() {
                 if (source != null) {
                     val decoder = BlendDatablockDecoder(result, source)
                     val decoded = decoder.decodeTypes(setOf("Object", "Mesh"), 500)
+                    val objectRecords = decoded.blocks
+                        .filter { it.success && it.typeName == "Object" }
+                        .flatMap { it.records }
                     val meshRecords = decoded.blocks
                         .filter { it.success && it.typeName == "Mesh" }
                         .flatMap { it.records }
-                    val linked = BlendMeshDatablockLinker.link(meshRecords, decoder)
-                    val normalized = BlendMeshExtractor.extract(linked.inputs)
-                    Triple(decoded, linked, normalized)
+                    val meshLinks = BlendMeshDatablockLinker.link(meshRecords, decoder)
+                    val normalized = BlendMeshExtractor.extract(meshLinks.inputs)
+                    val scene = BlendObjectMeshLinker.link(objectRecords, normalized)
+                    BlendImportSummary(decoded, meshLinks, normalized, scene)
                 } else null
             } else null
 
@@ -202,14 +213,12 @@ class MainActivity : Activity() {
                 } ?: "SDNA schema: not available"
                 val ending = if (result.endedCleanly) "ENDB terminator found" else "File ending not validated"
                 val dataLine = targeted?.let {
-                    val decoded = it.first
-                    val linked = it.second
-                    val normalized = it.third
-                    "\nObject/Mesh blocks: ${decoded.decodedBlockCount} decoded · ${decoded.failedBlockCount} unsupported/failed" +
-                        "\nNormalized meshes: ${normalized.meshes.size} · skipped ${linked.skippedMeshCount + normalized.skippedMeshCount}" +
-                        "\nLinker warnings: ${linked.warnings.size} · mesh warnings: ${normalized.warnings.size}"
-                } ?: "\nObject/Mesh decoding unavailable"
-                viewport.setMeshes(targeted?.third?.meshes ?: emptyList())
+                    "\\nObject/Mesh blocks: ${it.decoded.decodedBlockCount} decoded · ${it.decoded.failedBlockCount} unsupported/failed" +
+                        "\\nNormalized meshes: ${it.normalized.meshes.size} · skipped ${it.meshLinks.skippedMeshCount + it.normalized.skippedMeshCount}" +
+                        "\\nScene objects: ${it.scene.linkedObjectCount} linked · ${it.scene.skippedObjectCount} skipped" +
+                        "\\nWarnings: mesh links ${it.meshLinks.warnings.size} · scene ${it.scene.warnings.size} · mesh data ${it.normalized.warnings.size}"
+                } ?: "\\nObject/Mesh decoding unavailable"
+                viewport.setMeshes(targeted?.scene?.meshes ?: emptyList())
                 statusText.text = "$displayName\nBlender ${result.version ?: "unknown"} · ${result.pointerBits ?: "?"}-bit\nBlocks: ${result.blocks.size} · $schemaLine\n$ending$dataLine\n${result.message}"
             }
         }.start()

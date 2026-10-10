@@ -56,7 +56,7 @@ object BlendMeshLayoutInspector {
 
     private fun identifier(declaration: String): String? {
         val withoutArrays = declaration.substringBefore('[').trim()
-        val match = Regex("[A-Za-z_][A-Za-z0-9_]*\\$").find(withoutArrays)
-        return match?.value?.removeSuffix("$")
+        val identifier = withoutArrays.takeLastWhile { it.isLetterOrDigit() || it == '_' }
+        return identifier.takeIf { it.isNotEmpty() && (it.first().isLetter() || it.first() == '_') }
     }
 }

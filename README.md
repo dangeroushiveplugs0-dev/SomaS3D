@@ -14,6 +14,7 @@ A small Android viewport and orbit camera are shared test infrastructure for bot
 - .blend document picker reads and validates the fixed 12-byte Blender header.
 - Header inspection reports Blender version, pointer size, byte order, and file size when available.
 - Invalid signatures and truncated headers are rejected with a visible diagnostic.
+- Unit tests cover 32-bit / 64-bit headers, byte order, malformed markers, bad signatures, and truncated input.
 - No mesh extraction, SDNA/block parsing, or ShofterUI character-data integration yet.
 
 ## Design documents

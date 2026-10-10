@@ -1,15 +1,23 @@
 # SomaS3D
 
-SomaS3D is restarting from a clean baseline. The active scope is intentionally limited to two systems:
+SomaS3D is restarting from a clean baseline. Its two product systems are:
 
 1. **ShofterUI** — a standalone character-shaping system for morphs, outfits, and deformations.
-2. **Blender `.blend` importer** — a staged conversion pipeline that translates Blender project data into native, editable Soma data.
+2. **Blender .blend importer** — a staged conversion pipeline that translates Blender project data into native, editable Soma data.
 
-The previous modeling-core prototype is not part of this new baseline. No importer or ShofterUI implementation is claimed to exist yet; these documents define the retained requirements and a clean implementation direction.
+A small Android viewport and orbit camera are being built as shared test infrastructure for both systems. The old modeling-core prototype is not the foundation for this restart.
 
-## Retained design documents
+## Current foundation
+
+- Perspective viewport with ground grid, world axes, and origin.
+- Independent orbit camera with drag-to-orbit, pinch-to-zoom, and reset.
+- .blend document picker shell; selecting a file is not yet importing it.
+- ShofterUI placeholder; character-shaping data integration is not yet implemented.
+
+## Design documents
 
 - [Retained scope](docs/retained-scope.md)
+- [Viewport and camera foundation](docs/viewport-camera-foundation.md)
 - [Blender importer architecture](docs/blend-importer-architecture.md)
 
 ## Naming

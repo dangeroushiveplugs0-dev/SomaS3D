@@ -10,6 +10,21 @@ Tests cover header markers and malformed inputs, plus a synthetic 64-bit little-
 
 Read Blender project files on-device and convert supported content into native, editable Soma assets. Do not execute Blender scripts, Python add-ons, driver expressions, or arbitrary code stored in the project.
 
+## Blender version compatibility policy
+
+The intended compatibility floor is **Blender 3.0**, with broad coverage across Blender 3.x and 4.x and later versions added as fixtures and schema behavior can be verified. Do not optimize only for the newest release: downloaded character projects commonly remain on older versions because creator workflows, add-ons, and collaborators do not upgrade in lockstep.
+
+Compatibility is capability-based, not just a version-number check:
+
+- Validate the outer file header and decode SDNA from each file instead of relying on a hard-coded structure layout for one release.
+- Keep version-specific differences behind tested schema/layout rules and optional recognizers.
+- Maintain real-file fixtures across multiple minor versions, including 3.0-era files and representative later 3.x / 4.x files. Add newer major versions as they are released and can be tested.
+- Report the Blender version, recovered capabilities, approximations, and unsupported data for each import.
+- A file can be partially useful even when add-on features are unknown; do not reject supported mesh data just because custom rig metadata cannot be interpreted.
+- Never claim a version is supported based on its header alone. Support claims require real fixtures and expected normalized outputs.
+
+The current implementation has **not yet demonstrated full Blender 3.0+ compatibility**. The version range above is the project target; the verified support matrix must be updated only after real files from each listed version pass tests.
+
 ## Pipeline
 
 .blend file

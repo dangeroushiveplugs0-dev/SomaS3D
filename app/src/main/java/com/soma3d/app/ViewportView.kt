@@ -13,7 +13,8 @@ import kotlin.math.*
 class ViewportView(context: Context) : View(context) {
     private data class V3(val x: Float, val y: Float, val z: Float)
     private data class P2(val x: Float, val y: Float, val depth: Float)
-    private data class ProjectedFace(val meshId: Long, val depth: Float, val points: List<P2>)
+    private data class ProjectedFace(val meshId: Long, val faceIndex: Int, val depth: Float, val points: List<P2>)
+    private data class RenderFace(val faceIndex: Int, val depth: Float, val points: List<P2>)
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private var scene = NativeGeometry.loadScene() ?: fallbackScene()
@@ -22,6 +23,9 @@ class ViewportView(context: Context) : View(context) {
     private var zoom = 1f
     private var showGrid = true
     private var showEdges = true
+    private var faceSelectionMode = false
+    private var multiSelectMode = false
+    private val selectedFaces = mutableMapOf<Long, MutableSet<Int>>()
     private var downX = 0f
     private var downY = 0f
     private var lastX = 0f
@@ -40,6 +44,18 @@ class ViewportView(context: Context) : View(context) {
 
     fun toggleGrid() { showGrid = !showGrid; invalidate() }
     fun toggleEdges() { showEdges = !showEdges; invalidate() }
+
+    fun toggleSelectionMode(): Boolean {
+        faceSelectionMode = !faceSelectionMode
+        invalidate()
+        return faceSelectionMode
+    }
+
+    fun toggleMultiSelection(): Boolean {
+        multiSelectMode = !multiSelectMode
+        invalidate()
+        return multiSelectMode
+    }
 
     fun addCube() {
         if (NativeGeometry.addCube()) refreshScene()
@@ -71,7 +87,9 @@ class ViewportView(context: Context) : View(context) {
         paint.textSize = dp(11f)
         val activeName = scene.meshes.firstOrNull { it.id == scene.activeObjectId }?.name ?: "No Selection"
         val source = if (scene.fromRust) "Rust Scene" else "Preview Mesh"
-        canvas.drawText("$activeName  |  $source  |  ${scene.meshes.size} object(s)", dp(16f), height - dp(62f), paint)
+        val faceCount = selectedFaces.values.sumOf { it.size }
+        val mode = if (faceSelectionMode) "FACE" else "OBJECT"
+        canvas.drawText("$activeName  |  $source  |  ${scene.meshes.size} object(s)  |  $mode  |  $faceCount face(s)", dp(16f), height - dp(62f), paint)
     }
 
     private fun rotate(v: V3): V3 {
@@ -133,26 +151,38 @@ class ViewportView(context: Context) : View(context) {
             Color.rgb(55, 95, 148), Color.rgb(76, 128, 191)
         )
         val isActive = mesh.id == scene.activeObjectId
+        val faceSelection = selectedFaces[mesh.id].orEmpty()
         val faces = mesh.polygons.mapIndexedNotNull { faceIndex, polygon ->
             if (polygon.size < 3 || polygon.any { it !in projected.indices }) return@mapIndexedNotNull null
             val points = polygon.map { vertexIndex -> projected[vertexIndex] ?: return@mapIndexedNotNull null }
             val depth = points.map { it.depth }.average().toFloat()
-            Triple(depth, baseColors[(meshIndex + faceIndex) % baseColors.size], points)
-        }.sortedByDescending { it.first }
+            RenderFace(faceIndex, depth, points)
+        }.sortedByDescending { it.depth }
 
-        for ((_, faceColor, points) in faces) {
+        for (face in faces) {
+            val points = face.points
+            val faceColor = baseColors[(meshIndex + face.faceIndex) % baseColors.size]
+            val isFaceSelected = faceSelectionMode && face.faceIndex in faceSelection
             val path = Path().apply {
                 moveTo(points[0].x, points[0].y)
                 for (i in 1 until points.size) lineTo(points[i].x, points[i].y)
                 close()
             }
             paint.style = Paint.Style.FILL
-            paint.color = if (isActive) brighten(faceColor) else faceColor
+            paint.color = when {
+                isFaceSelected -> Color.rgb(236, 151, 54)
+                isActive -> brighten(faceColor)
+                else -> faceColor
+            }
             canvas.drawPath(path, paint)
             if (showEdges) {
                 paint.style = Paint.Style.STROKE
-                paint.strokeWidth = dp(if (isActive) 2f else 1.1f)
-                paint.color = if (isActive) Color.rgb(255, 221, 124) else Color.rgb(190, 216, 245)
+                paint.strokeWidth = dp(if (isFaceSelected) 2.8f else if (isActive) 2f else 1.1f)
+                paint.color = when {
+                    isFaceSelected -> Color.rgb(255, 235, 170)
+                    isActive -> Color.rgb(255, 221, 124)
+                    else -> Color.rgb(190, 216, 245)
+                }
                 canvas.drawPath(path, paint)
             }
         }
@@ -195,17 +225,31 @@ class ViewportView(context: Context) : View(context) {
         val hits = mutableListOf<ProjectedFace>()
         for (mesh in scene.meshes) {
             val projected = mesh.vertices.map { project(V3(it[0], it[1], it[2]), cx, cy, focal) }
-            for (polygon in mesh.polygons) {
+            for ((faceIndex, polygon) in mesh.polygons.withIndex()) {
                 if (polygon.size < 3 || polygon.any { it !in projected.indices }) continue
                 val points = polygon.map { projected[it] }.filterNotNull()
                 if (points.size != polygon.size) continue
                 if (pointInPolygon(x, y, points)) {
-                    hits.add(ProjectedFace(mesh.id, points.map { it.depth }.average().toFloat(), points))
+                    hits.add(ProjectedFace(mesh.id, faceIndex, points.map { it.depth }.average().toFloat(), points))
                 }
             }
         }
         val hit = hits.minByOrNull { it.depth } ?: return
-        if (hit.meshId != scene.activeObjectId && NativeGeometry.selectObject(hit.meshId)) refreshScene()
+        if (!faceSelectionMode) {
+            if (hit.meshId != scene.activeObjectId && NativeGeometry.selectObject(hit.meshId)) refreshScene()
+            return
+        }
+
+        if (hit.meshId != scene.activeObjectId && !NativeGeometry.selectObject(hit.meshId)) return
+        if (!multiSelectMode) selectedFaces.clear()
+        val faces = selectedFaces.getOrPut(hit.meshId) { mutableSetOf() }
+        if (multiSelectMode && !faces.add(hit.faceIndex)) {
+            faces.remove(hit.faceIndex)
+            if (faces.isEmpty()) selectedFaces.remove(hit.meshId)
+        } else {
+            faces.add(hit.faceIndex)
+        }
+        refreshScene()
     }
 
     private fun pointInPolygon(x: Float, y: Float, points: List<P2>): Boolean {

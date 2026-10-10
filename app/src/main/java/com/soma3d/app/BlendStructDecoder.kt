@@ -16,7 +16,8 @@ object BlendStructDecoder {
         val offset: Int,
         val byteSize: Int,
         val pointerDepth: Int,
-        val arrayDimensions: List<Int>
+        val arrayDimensions: List<Int>,
+        val alignment: Int
     )
 
     data class StructLayout(
@@ -24,7 +25,8 @@ object BlendStructDecoder {
         val byteSize: Int,
         val fields: List<FieldLayout>,
         val supported: Boolean,
-        val message: String
+        val message: String,
+        val alignment: Int = 1
     )
 
     data class DecodedRecord(val typeName: String, val fields: Map<String, Any>)
@@ -146,7 +148,7 @@ object BlendStructDecoder {
                     offset = align(offset, alignment)
                     fields.add(FieldLayout(
                         declarator.identifier, field.typeName, offset, fieldBytesLong.toInt(),
-                        declarator.pointerDepth, declarator.dimensions
+                        declarator.pointerDepth, declarator.dimensions, alignment
                     ))
                     offset = try {
                         Math.addExact(offset, fieldBytesLong.toInt())
@@ -160,7 +162,7 @@ object BlendStructDecoder {
                 if (computedSize != declaredSize) {
                     return unsupported(typeName, "Computed layout is $computedSize bytes but SDNA TLEN declares $declaredSize; refusing guessed offsets.")
                 }
-                val result = StructLayout(typeName, declaredSize, fields, true, "Layout validated against SDNA TLEN.")
+                val result = StructLayout(typeName, declaredSize, fields, true, "Layout validated against SDNA TLEN.", structAlignment)
                 cache[typeName] = result
                 return result
             } finally {
@@ -170,10 +172,7 @@ object BlendStructDecoder {
 
         private fun alignmentOf(fields: List<FieldLayout>, size: Int, pointerBytes: Int): Int {
             if (fields.isEmpty()) return 1
-            return fields.maxOf { field ->
-                if (field.pointerDepth > 0) pointerBytes
-                else primitiveAlignment(field.byteSize.coerceAtLeast(1), pointerBytes)
-            }.coerceAtMost(pointerBytes).coerceAtLeast(1)
+            return fields.maxOf { it.alignment }.coerceAtMost(pointerBytes).coerceAtLeast(1)
         }
     }
 

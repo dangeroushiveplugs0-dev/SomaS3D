@@ -157,3 +157,32 @@ For every fixture, test parsed structure and final normalized data. Include reso
 10. Materials, textures, and broader version coverage.
 
 Do not advertise general .blend support until the supported-version matrix and fixture tests justify that claim.
+
+## Extended character-project recovery
+
+Treat a `.blend` as a structured project, not merely a mesh container. SDNA describes how structures are laid out; actual values and relationships live in datablock payloads. Add-on-specific features should be discovered through generic datablock decoding first, then interpreted by optional recognizers.
+
+### Additional data families to preserve
+
+- **Physics and collision setup:** rigid/soft-body settings, cloth settings, collision modifiers, collision-proxy objects, parent links, and relevant custom properties. Preserve numeric parameters and object relationships even when Soma has no matching runtime simulation yet.
+- **Custom control-panel metadata:** MustardUI-like panel names, sections, labels, toggles, numeric fields, property paths, and defaults where stored in custom properties or other datablocks. Recreate a native ShofterUI panel from recognized metadata; unknown layouts remain inspectable metadata.
+- **Outfit and geometry toggles:** drivers or properties that control object visibility, collection visibility, modifier enablement, and alternative mesh variants. Convert recognized boolean/enum mappings into native toggles without running the original driver code.
+- **Morph and corrective deformation systems:** shape keys, lattice/modifier parameters, and pose-space or bone-angle relationships. Preserve source relationships and ranges; only implement deterministic mappings that can be represented safely in the native rig model.
+- **Embedded text and add-on data:** enumerate text datablocks and recognized add-on metadata as untrusted project content. Never auto-run scripts, auto-run rig UI files, install add-ons, or execute expressions. Keep script text inert and optionally report its name and presence to the user.
+- **External and plugin-specific origins:** retain generic object, armature, vertex-group, material, texture, and custom-property data even when a file originated from XNALara/XPS, Cats, Diffeomorphic/DAZ, Auto-Rig Pro, Wiggle Bones, Jiggle Gen, or another add-on. Do not require the original add-on to read core Blender data.
+
+### Implementation rule
+
+Build a **generic decoder + normalized Soma IR + recognizer registry**:
+
+1. Generic decoder interprets datablocks using the file's SDNA schema and safe pointer/reference resolution.
+2. The IR stores known Blender concepts plus typed unknown/custom metadata, with source IDs and relationships.
+3. Recognizers identify known add-on conventions or driver/constraint patterns without executing code.
+4. A capability mapper converts supported data into native Soma/ShofterUI controls and runtime features.
+5. The import report labels each feature as supported, approximated, preserved-but-inactive, or unsupported, with a reason.
+
+Do not assume every downloaded character file contains these features or that a particular add-on's data always uses the same property names. Add-on conventions vary by version. Confirm recognizers against legally obtained test fixtures and anonymized structural samples before claiming support.
+
+### Expanded fixture coverage
+
+Add fixtures for physics settings and collision proxies, custom UI metadata, object/collection and modifier toggles, corrective shape-key relationships, and embedded script/text datablocks. Assert that scripts remain inert and that unknown properties survive round-tripping through the IR where feasible.

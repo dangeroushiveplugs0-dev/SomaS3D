@@ -20,7 +20,9 @@ object BlendBlockReader {
         val payloadBytes: Long,
         val oldAddress: Long,
         val sdnaIndex: Long,
-        val count: Long
+        val count: Long,
+        /** Absolute byte offset of this block's payload in the source file, when known. */
+        val payloadOffset: Long = -1L
     )
 
     data class SchemaField(val typeName: String, val fieldName: String)
@@ -71,12 +73,15 @@ object BlendBlockReader {
         val blocks = ArrayList<BlockSummary>()
         var schema: Schema? = null
         var endedCleanly = false
+        var streamOffset = HEADER_BYTES.toLong()
 
         try {
             while (blocks.size < MAX_BLOCKS) {
                 val blockHeader = readExact(input, 4 + 4 + pointerBits / 8 + 4 + 4)
                     ?: return Result(true, version, pointerBits, littleEndian, blocks, schema, false,
                         "Unexpected end of file before ENDB block.")
+                streamOffset = Math.addExact(streamOffset, blockHeader.size.toLong())
+                val payloadOffset = streamOffset
                 val code = String(blockHeader, 0, 4, Charsets.US_ASCII)
                 var offset = 4
                 val length = unsignedInt(blockHeader, offset, littleEndian); offset += 4
@@ -102,6 +107,7 @@ object BlendBlockReader {
                         ?: return Result(true, version, pointerBits, littleEndian, blocks, schema, false,
                             "DNA1 payload is truncated.")
                     schema = parseSchema(payload, littleEndian)
+                    streamOffset = Math.addExact(streamOffset, length)
                     if (schema == null) {
                         return Result(true, version, pointerBits, littleEndian, blocks, null, false,
                             "DNA1 block was found, but its SDNA schema is malformed or unsupported.")
@@ -113,7 +119,10 @@ object BlendBlockReader {
                     }
                 }
 
-                blocks.add(BlockSummary(code, length, oldAddress, sdnaIndex, count))
+                    streamOffset = Math.addExact(streamOffset, length)
+                }
+
+                blocks.add(BlockSummary(code, length, oldAddress, sdnaIndex, count, payloadOffset))
                 if (code == "ENDB") {
                     endedCleanly = true
                     break

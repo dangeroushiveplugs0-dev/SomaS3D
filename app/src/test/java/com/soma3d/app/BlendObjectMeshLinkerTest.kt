@@ -13,7 +13,7 @@ class BlendObjectMeshLinkerTest {
         0.0, 0.0, 0.0, 1.0
     )
 
-    private fun translated(x: Double) = identity.toMutableList().also { it[3] = x }
+    private fun translated(x: Double) = identity.toMutableList().also { it[12] = x }
 
     private fun objectRecord(name: String, address: Long, matrix: List<Double>) =
         BlendStructDecoder.DecodedRecord(

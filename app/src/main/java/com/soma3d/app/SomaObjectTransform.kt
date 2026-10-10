@@ -27,6 +27,10 @@ object SomaObjectTransform {
             return Result(null, false, "Object transform contains a non-numeric or non-finite value.")
         }
         val m = matrix.filterNotNull()
+        if (kotlin.math.abs(m[12]) > 1e-6 || kotlin.math.abs(m[13]) > 1e-6 ||
+            kotlin.math.abs(m[14]) > 1e-6 || kotlin.math.abs(m[15] - 1.0) > 1e-6) {
+            return Result(null, false, "Object matrix is not a supported affine transform.")
+        }
         val transformed = mesh.vertices.map { point ->
             val x = m[0] * point.x + m[1] * point.y + m[2] * point.z + m[3]
             val y = m[4] * point.x + m[5] * point.y + m[6] * point.z + m[7]

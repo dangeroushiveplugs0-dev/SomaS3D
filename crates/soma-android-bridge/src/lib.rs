@@ -2,7 +2,7 @@
 use jni::objects::JClass;
 use jni::sys::{jlong, jstring};
 use jni::JNIEnv;
-use soma_geometry::{PrimitiveKind, Scene, Transform3D};
+use soma_geometry::{PrimitiveKind, Scene};
 use std::fmt::Write as _;
 use std::sync::{Mutex, OnceLock};
 
@@ -75,16 +75,11 @@ fn snapshot_json() -> Result<String, String> {
 
 fn add_primitive(kind: PrimitiveKind, label: &str) -> Result<i64, String> {
     with_scene(|scene| {
-        let next_index = scene.objects().len() as f32;
+        // Primitives are created at the world origin. Placement is an explicit
+        // modeling operation, not an automatic offset based on object count.
         let id = scene
             .add_primitive(label, kind)
             .map_err(|error| format!("add primitive failed: {error:?}"))?;
-        let mut transform = Transform3D::default();
-        transform.translation = [next_index * 2.8, 0.0, 0.0];
-        scene
-            .object_mut(id)
-            .ok_or_else(|| "new object missing".to_owned())?
-            .set_transform(transform);
         Ok(id.0 as i64)
     })
 }
@@ -170,5 +165,12 @@ mod tests {
         assert!(json.contains("\"Test Sphere\""));
         assert!(json.contains(&format!("\"active\":{first}")));
         assert!(second > first);
+        with_scene(|scene| {
+            for object in scene.objects() {
+                assert_eq!(object.transform(), soma_geometry::Transform3D::default());
+            }
+            Ok(())
+        })
+        .unwrap();
     }
 }

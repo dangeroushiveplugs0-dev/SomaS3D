@@ -9,13 +9,15 @@ A small Android viewport and orbit camera are shared test infrastructure for bot
 
 ## Current foundation
 
-- Perspective viewport with ground grid, world axes, and origin.
-- Independent orbit camera with drag-to-orbit, pinch-to-zoom, and reset.
-- .blend document picker reads and validates the fixed 12-byte Blender header.
-- Header inspection reports Blender version, pointer size, byte order, and file size when available.
-- Invalid signatures and truncated headers are rejected with a visible diagnostic.
-- Unit tests cover 32-bit / 64-bit headers, byte order, malformed markers, bad signatures, and truncated input.
-- No mesh extraction, SDNA/block parsing, or ShofterUI character-data integration yet.
+- Perspective viewport with ground grid, world axes, and an independent orbit camera.
+- .blend picker validates the 12-byte Blender header.
+- A bounded sequential reader scans outer block headers, reads the DNA1 schema, and checks for the ENDB terminator without loading the entire project into memory.
+- Block scanning runs off the UI thread and reports block count, Blender version, and SDNA schema counts.
+- Limits guard individual block sizes, schema size, and block count.
+- Normalized rig-control models preserve the design for custom properties, drivers, control-bone transforms, action constraints, and transformation constraints.
+- Driver expressions are stored as metadata only; the importer never executes Blender scripts or expressions.
+- Unit tests cover header validation and synthetic block/SDNA scanning.
+- **Not implemented yet:** object/mesh extraction, visible mesh rendering, rig-control extraction from real .blend files, and ShofterUI editing.
 
 ## Design documents
 

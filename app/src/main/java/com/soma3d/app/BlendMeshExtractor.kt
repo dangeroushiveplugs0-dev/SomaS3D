@@ -21,6 +21,7 @@ object BlendMeshExtractor {
 
     fun extract(inputs: List<MeshRecords>): SomaMeshImportResult {
         val meshes = ArrayList<SomaMesh>()
+        val sourceAddresses = ArrayList<Long?>()
         val globalWarnings = ArrayList<String>()
         var skipped = 0
 
@@ -83,12 +84,13 @@ object BlendMeshExtractor {
                 warnings.add("One or more degenerate polygons were omitted.")
             }
             meshes.add(SomaMesh(name, vertices, decodedPolygons, warnings))
+            sourceAddresses.add(input.mesh.fileAddress)
             globalWarnings.addAll(warnings.map { "$name: $it" })
         }
 
         val message = "Normalized ${meshes.size} mesh(es); skipped $skipped. " +
             if (globalWarnings.isEmpty()) "No extraction warnings." else "${globalWarnings.size} warning(s)."
-        return SomaMeshImportResult(meshes, globalWarnings, skipped, message)
+        return SomaMeshImportResult(meshes, globalWarnings, skipped, message, sourceAddresses)
     }
 
     private fun decodeVertices(records: List<BlendStructDecoder.DecodedRecord>): List<SomaVector3>? {

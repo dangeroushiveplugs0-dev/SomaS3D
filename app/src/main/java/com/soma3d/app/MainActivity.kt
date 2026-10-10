@@ -213,11 +213,11 @@ class MainActivity : Activity() {
                 } ?: "SDNA schema: not available"
                 val ending = if (result.endedCleanly) "ENDB terminator found" else "File ending not validated"
                 val dataLine = targeted?.let {
-                    "\\nObject/Mesh blocks: ${it.decoded.decodedBlockCount} decoded · ${it.decoded.failedBlockCount} unsupported/failed" +
-                        "\\nNormalized meshes: ${it.normalized.meshes.size} · skipped ${it.meshLinks.skippedMeshCount + it.normalized.skippedMeshCount}" +
-                        "\\nScene objects: ${it.scene.linkedObjectCount} linked · ${it.scene.skippedObjectCount} skipped" +
-                        "\\nWarnings: mesh links ${it.meshLinks.warnings.size} · scene ${it.scene.warnings.size} · mesh data ${it.normalized.warnings.size}"
-                } ?: "\\nObject/Mesh decoding unavailable"
+                    "\nObject/Mesh blocks: ${it.decoded.decodedBlockCount} decoded · ${it.decoded.failedBlockCount} unsupported/failed" +
+                        "\nNormalized meshes: ${it.normalized.meshes.size} · skipped ${it.meshLinks.skippedMeshCount + it.normalized.skippedMeshCount}" +
+                        "\nScene objects: ${it.scene.linkedObjectCount} linked · ${it.scene.skippedObjectCount} skipped" +
+                        "\nWarnings: mesh links ${it.meshLinks.warnings.size} · scene ${it.scene.warnings.size} · mesh data ${it.normalized.warnings.size}"
+                } ?: "\nObject/Mesh decoding unavailable"
                 viewport.setMeshes(targeted?.scene?.meshes ?: emptyList())
                 statusText.text = "$displayName\nBlender ${result.version ?: "unknown"} · ${result.pointerBits ?: "?"}-bit\nBlocks: ${result.blocks.size} · $schemaLine\n$ending$dataLine\n${result.message}"
             }

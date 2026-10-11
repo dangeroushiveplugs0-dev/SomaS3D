@@ -198,6 +198,23 @@ object BlendStructDecoder {
             }
             return readUnsigned(raw, 0, pointerBytes, byteOrder)
         }
+
+        // Decode inline structs into nested maps. This is needed for fields such as
+        // Mesh.vdata.layers; it does not follow pointers or execute any stored behavior.
+        if (field.typeName in schema.structs.map { it.typeName }) {
+            if (field.arrayDimensions.isNotEmpty()) return null
+            val nested = layout(schema, field.typeName, pointerBytes * 8)
+            if (!nested.supported || nested.byteSize != field.byteSize) return null
+            val values = LinkedHashMap<String, Any>()
+            for (nestedField in nested.fields) {
+                val value = decodeField(
+                    schema, nestedField, payload, start, pointerBytes, littleEndian
+                ) ?: continue
+                values[nestedField.name] = value
+            }
+            return values
+        }
+
         if (field.arrayDimensions.isNotEmpty()) {
             if (field.typeName == "char" || field.typeName == "uchar") {
                 val nul = raw.indexOf(0).let { if (it < 0) raw.size else it }

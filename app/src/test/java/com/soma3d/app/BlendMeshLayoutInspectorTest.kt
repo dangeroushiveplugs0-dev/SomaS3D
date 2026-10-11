@@ -36,7 +36,7 @@ class BlendMeshLayoutInspectorTest {
         ))
 
         assertEquals(BlendMeshLayoutInspector.Kind.CUSTOM_DATA_LAYOUT, report.kind)
-        assertTrue(report.explanation.contains("geometry remains unsupported"))
+        assertTrue(report.explanation.contains("explicitly supported layer payloads"))
     }
 
     @Test
@@ -46,4 +46,16 @@ class BlendMeshLayoutInspectorTest {
         assertEquals(BlendMeshLayoutInspector.Kind.INCOMPLETE_OR_UNKNOWN, report.kind)
         assertTrue(report.explanation.contains("will not be guessed"))
     }
+    @Test
+    fun prefersModernCustomDataWhenLegacyFieldsRemainInSchema() {
+        val report = BlendMeshLayoutInspector.inspect(schema(
+            listOf(
+                "*mvert", "*mloop", "*mpoly", "totvert", "totloop", "totpoly",
+                "vert_data", "loop_data", "face_data", "*face_offset_indices", "faces_num"
+            ),
+            setOf("CustomData", "CustomDataLayer")
+        ))
+        assertEquals(BlendMeshLayoutInspector.Kind.CUSTOM_DATA_LAYOUT, report.kind)
+    }
+
 }

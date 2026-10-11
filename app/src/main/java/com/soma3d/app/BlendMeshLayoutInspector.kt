@@ -3,8 +3,8 @@ package com.soma3d.app
 /**
  * Classifies mesh storage using the file's own SDNA declarations.
  *
- * This is diagnostic/capability detection only: recognizing CustomData does not mean
- * its layer enums or payloads have been decoded, so it never attempts unsafe guesses.
+ * This is diagnostic/capability detection: modern face-offset topology is distinguished from
+ * retained deprecated fields, while actual extraction remains limited to explicit payload paths.
  */
 object BlendMeshLayoutInspector {
     enum class Kind {
@@ -36,7 +36,8 @@ object BlendMeshLayoutInspector {
         val customDataFields = setOf("vdata", "edata", "fdata", "ldata", "pdata", "vert_data", "edge_data", "face_data", "loop_data", "fdata_legacy")
         // Modern Blender schemas can retain deprecated direct-array fields for compatibility.
         // The modern face-offset field is a stronger signal than the mere presence of old fields.
-        if (hasCustomDataTypes && "face_offset_indices" in fields && fields.any { it in customDataFields }) {
+        if (hasCustomDataTypes && fields.any { it in customDataFields } &&
+            ("face_offset_indices" in fields || !legacyFields.all { it in fields })) {
             return Report(
                 Kind.CUSTOM_DATA_LAYOUT, fields, true,
                 "Mesh uses a CustomData-style layout. Layer metadata is detected; only explicitly supported layer payloads are eligible for geometry extraction."

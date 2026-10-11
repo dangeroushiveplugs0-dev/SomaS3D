@@ -19,8 +19,11 @@ object BlendCustomDataInspector {
     )
 
     private val domains = listOf(
-        "vdata" to "vertex", "edata" to "edge", "ldata" to "corner",
-        "pdata" to "face", "fdata" to "legacy-face"
+        "vdata" to "vertex", "vert_data" to "vertex",
+        "edata" to "edge", "edge_data" to "edge",
+        "ldata" to "corner", "loop_data" to "corner",
+        "pdata" to "face", "face_data" to "face",
+        "fdata" to "legacy-face", "fdata_legacy" to "legacy-face"
     )
 
     fun inspect(meshRecords: List<BlendStructDecoder.DecodedRecord>, decoder: BlendDatablockDecoder, blenderVersion: String? = null): Result {

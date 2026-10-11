@@ -28,6 +28,7 @@ object BlendCustomDataInspector {
         val domainInfos = ArrayList<DomainInfo>()
         val warnings = ArrayList<String>()
         var inspectedMeshes = 0
+        var requestedLayerTotal = 0
 
         for ((meshIndex, mesh) in meshRecords.withIndex()) {
             val meshName = (mesh.fields["name"] as? String)?.takeIf { it.isNotBlank() } ?: "Mesh ${meshIndex + 1}"
@@ -47,12 +48,13 @@ object BlendCustomDataInspector {
                     domainInfos.add(DomainInfo(domainName, 0, 0))
                     continue
                 }
-                if (count > MAX_LAYERS_PER_DOMAIN || layers.size + count > MAX_TOTAL_LAYERS) {
+                if (count > MAX_LAYERS_PER_DOMAIN || requestedLayerTotal.toLong() + count.toLong() > MAX_TOTAL_LAYERS.toLong()) {
                     val warning = "$meshName: $domainName declares too many CustomData layers; inventory limit applied."
                     warnings.add(warning)
                     domainInfos.add(DomainInfo(domainName, count, 0, warning))
                     continue
                 }
+                requestedLayerTotal += count
                 if (pointer == null || pointer <= 0L) {
                     val warning = "$meshName: $domainName has $count layer(s) but no valid layer-array address."
                     warnings.add(warning)

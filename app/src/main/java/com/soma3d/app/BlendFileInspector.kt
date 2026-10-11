@@ -22,10 +22,11 @@ object BlendFileInspector {
     )
 
     fun inspect(input: InputStream, fileSizeBytes: Long? = null): Inspection {
+        val decodedInput = BlendInputStreams.open(input)
         val header = ByteArray(HEADER_SIZE)
         var count = 0
         while (count < header.size) {
-            val read = input.read(header, count, header.size - count)
+            val read = decodedInput.read(header, count, header.size - count)
             if (read < 0) break
             if (read == 0) continue
             count += read
@@ -38,7 +39,7 @@ object BlendFileInspector {
                 pointerBits = null,
                 littleEndian = null,
                 fileSizeBytes = fileSizeBytes,
-                message = "File is too short to contain a complete .blend header ($count/$HEADER_SIZE bytes)."
+                message = "File is too short to contain a complete .blend header ($count/$HEADER_SIZE bytes), including after checking for Zstandard compression."
             )
         }
 
@@ -50,7 +51,7 @@ object BlendFileInspector {
                     pointerBits = null,
                     littleEndian = null,
                     fileSizeBytes = fileSizeBytes,
-                    message = "This file does not have the Blender .blend signature."
+                    message = "This file does not have the Blender .blend signature, either directly or after Zstandard decompression."
                 )
             }
         }

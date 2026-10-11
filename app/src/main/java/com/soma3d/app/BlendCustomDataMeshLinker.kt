@@ -116,7 +116,8 @@ object BlendCustomDataMeshLinker {
         return decoded.records.firstOrNull { layer ->
             val type = readCount(layer.fields["type"])
             val name = (layer.fields["name"] as? String)?.trim()
-            type in typeIds && name in names && (readPointer(layer.fields["data"] ) ?: 0L) > 0L
+            type != null && type in typeIds && name != null && name in names &&
+                (readPointer(layer.fields["data"]) ?: 0L) > 0L
         }
     }
 

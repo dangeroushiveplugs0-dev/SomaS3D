@@ -258,3 +258,10 @@ The generic decoder now expands inline SDNA structures into nested field maps af
 ### Version-aware CustomData type names
 
 `BlendCustomDataType.kt` names a deliberately small set of CustomData type IDs using the Blender 3.6 and 4.0 DNA declarations. Unknown version strings and unrecognized IDs remain unlabeled. This is metadata labeling only: a recognized `Float3` or `Int32` label is not evidence that its payload block has been resolved or decoded.
+
+
+## Initial Blender 4.0 CustomData geometry path
+
+A conservative first geometry path is now present for schemas exposing `Mesh.vert_data`, `Mesh.loop_data`, `Mesh.face_offset_indices`, and `Mesh.faces_num`. It requires a vertex-domain `Float3` layer named `position` or `.position`, a corner-domain `Int32` layer named `.corner_vert` or `corner_vert`, and a valid face-offset array. Payload reads are bounded and validated against indexed datablock byte ranges. Coordinates must be finite; face offsets must be monotonic and cover the corner array; every corner vertex index must be valid.
+
+This path is intentionally narrow. It does not yet support all CustomData attribute types, legacy CustomData versions without face-offset topology, external layer storage, edit-mode-only mesh data, or modifier evaluation. Real Blender fixtures are still required to verify the serialized block shapes and end-to-end behavior.

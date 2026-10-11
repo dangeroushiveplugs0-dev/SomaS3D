@@ -26,5 +26,6 @@ android {
 }
 
 dependencies {
+    implementation("com.github.luben:zstd-jni:1.5.7-6")
     testImplementation("junit:junit:4.13.2")
 }

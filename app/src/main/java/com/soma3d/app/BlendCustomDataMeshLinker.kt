@@ -35,8 +35,8 @@ object BlendCustomDataMeshLinker {
         var skipped = 0
 
         for ((index, mesh) in meshRecords.withIndex()) {
-            val vertexData = mesh.fields["vdata"] as? Map<*, *>
-            val cornerData = mesh.fields["ldata"] as? Map<*, *>
+            val vertexData = (mesh.fields["vert_data"] ?: mesh.fields["vdata"]) as? Map<*, *>
+            val cornerData = (mesh.fields["loop_data"] ?: mesh.fields["ldata"]) as? Map<*, *>
             // Avoid counting legacy-only meshes as failed attempts.
             if (vertexData == null && cornerData == null) continue
 

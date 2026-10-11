@@ -248,7 +248,7 @@ class MainActivity : Activity() {
                         (it.customData.layers.take(4).takeIf { layers -> layers.isNotEmpty() }?.joinToString(
                             prefix = "\nLayers: ", separator = " · "
                         ) { layer -> "${layer.domain}:${layer.name} (${layer.typeLabel ?: "type ${layer.typeId ?: "?"}"})" } ?: "") +
-                        "\nWarnings: mesh links ${it.meshLinks.warnings.size} · CustomData geometry ${it.customGeometry.warnings.size} · scene ${it.scene.warnings.size}"
+                        "\nWarnings: mesh links ${it.meshLinks.warnings.size} · legacy geometry ${it.normalized.warnings.size - it.customGeometry.warnings.size} · CustomData geometry ${it.customGeometry.warnings.size} · scene ${it.scene.warnings.size}"
                 } ?: "\nObject/Mesh decoding unavailable"
                 viewport.setMeshes(targeted?.scene?.meshes ?: emptyList())
                 statusText.text = "$displayName\nBlender ${result.version ?: "unknown"} · ${result.pointerBits ?: "?"}-bit\nBlocks: ${result.blocks.size} · $schemaLine\n$ending$dataLine\n${result.message}"

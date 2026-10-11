@@ -162,6 +162,7 @@ class MainActivity : Activity() {
 
     private fun scanBlendStructure(uri: Uri, displayName: String) {
         Thread {
+            try {
             val importCache = File(cacheDir, "blend-imports")
             val cachedFile = try {
                 val stream = contentResolver.openInputStream(uri)
@@ -264,6 +265,15 @@ class MainActivity : Activity() {
                 } ?: "\nObject/Mesh decoding unavailable"
                 viewport.setMeshes(targeted?.scene?.meshes ?: emptyList())
                 statusText.text = "$displayName\nBlender ${result.version ?: "unknown"} · ${result.pointerBits ?: "?"}-bit\nBlocks: ${result.blocks.size} · $schemaLine\n$ending$dataLine\n${result.message}"
+            }
+            } catch (error: OutOfMemoryError) {
+                runOnUiThread {
+                    statusText.text = "Import stopped: $displayName\\nThe file exceeded available memory during caching or scanning. SomaS3D is still open; try a smaller file."
+                }
+            } catch (error: Throwable) {
+                runOnUiThread {
+                    statusText.text = "Import failed: $displayName\\n${error.message ?: error.javaClass.simpleName}\\nThe app caught an unexpected importer failure."
+                }
             }
         }.start()
     }

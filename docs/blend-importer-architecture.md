@@ -253,3 +253,8 @@ This is still a conservative first path, not broad Blender compatibility. The cu
 The generic decoder now expands inline SDNA structures into nested field maps after validating the nested structure size against its SDNA TLEN. This makes inline fields such as `Mesh.vdata`, `Mesh.ldata`, and related `CustomData` records inspectable without following arbitrary pointers.
 
 `BlendCustomDataInspector.kt` uses those maps to locate each domain's `layers` pointer and `totlayer` count, then asks the address-indexed decoder for exactly that many `CustomDataLayer` records. It applies per-domain and global caps and reports layer names, raw type IDs, and whether the layer data pointer is non-zero. A type ID is deliberately not treated as a geometry decoder: the next step is version-aware mapping of verified layer storage layouts and their payload SDNA types, backed by real Blender fixtures.
+
+
+### Version-aware CustomData type names
+
+`BlendCustomDataType.kt` names a deliberately small set of CustomData type IDs using the Blender 3.6 and 4.0 DNA declarations. Unknown version strings and unrecognized IDs remain unlabeled. This is metadata labeling only: a recognized `Float3` or `Int32` label is not evidence that its payload block has been resolved or decoded.

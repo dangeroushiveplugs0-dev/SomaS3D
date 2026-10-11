@@ -19,7 +19,8 @@ class MainActivity : Activity() {
         val meshLinks: BlendMeshDatablockLinker.LinkResult,
         val normalized: SomaMeshImportResult,
         val scene: BlendObjectMeshLinker.Result,
-        val meshLayout: BlendMeshLayoutInspector.Report
+        val meshLayout: BlendMeshLayoutInspector.Report,
+        val customData: BlendCustomDataInspector.Result
     )
 
     private lateinit var viewport: ViewportView
@@ -78,7 +79,7 @@ class MainActivity : Activity() {
             text = "Scene empty · choose a .blend file to inspect its block structure"
             setTextColor(android.graphics.Color.rgb(168, 181, 198))
             textSize = 12f
-            maxLines = 5
+            maxLines = 10
             setPadding(dp(2), 0, dp(2), dp(8))
         }
         bottom.addView(statusText)
@@ -205,7 +206,8 @@ class MainActivity : Activity() {
                     val normalized = BlendMeshExtractor.extract(meshLinks.inputs)
                     val scene = BlendObjectMeshLinker.link(objectRecords, normalized)
                     val meshLayout = BlendMeshLayoutInspector.inspect(result.schema)
-                    BlendImportSummary(decoded, meshLinks, normalized, scene, meshLayout)
+                    val customData = BlendCustomDataInspector.inspect(meshRecords, decoder)
+                    BlendImportSummary(decoded, meshLinks, normalized, scene, meshLayout, customData)
                 } else null
             } else null
 

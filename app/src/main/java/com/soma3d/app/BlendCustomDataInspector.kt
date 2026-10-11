@@ -8,7 +8,7 @@ object BlendCustomDataInspector {
     private const val MAX_LAYERS_PER_DOMAIN = 256
     private const val MAX_TOTAL_LAYERS = 1024
 
-    data class LayerInfo(val domain: String, val name: String, val typeId: Int?, val hasDataAddress: Boolean)
+    data class LayerInfo(val domain: String, val name: String, val typeId: Int?, val typeLabel: String?, val hasDataAddress: Boolean)
     data class DomainInfo(val domain: String, val declaredLayerCount: Int, val decodedLayerCount: Int, val warning: String? = null)
     data class Result(
         val inspectedMeshCount: Int,
@@ -23,7 +23,7 @@ object BlendCustomDataInspector {
         "pdata" to "face", "fdata" to "legacy-face"
     )
 
-    fun inspect(meshRecords: List<BlendStructDecoder.DecodedRecord>, decoder: BlendDatablockDecoder): Result {
+    fun inspect(meshRecords: List<BlendStructDecoder.DecodedRecord>, decoder: BlendDatablockDecoder, blenderVersion: String? = null): Result {
         val layers = ArrayList<LayerInfo>()
         val domainInfos = ArrayList<DomainInfo>()
         val warnings = ArrayList<String>()
@@ -68,7 +68,7 @@ object BlendCustomDataInspector {
                     domainInfos.add(DomainInfo(domainName, count, 0, warning))
                     continue
                 }
-                val mapped = summarizeLayerRecords(domainName, decoded.records)
+                val mapped = summarizeLayerRecords(domainName, decoded.records, blenderVersion)
                 layers.addAll(mapped)
                 domainInfos.add(DomainInfo(domainName, count, mapped.size))
             }
@@ -79,12 +79,13 @@ object BlendCustomDataInspector {
     }
 
     /** Pure mapping helper for unit-testing partial or malformed layer descriptors. */
-    fun summarizeLayerRecords(domain: String, records: List<BlendStructDecoder.DecodedRecord>): List<LayerInfo> =
+    fun summarizeLayerRecords(domain: String, records: List<BlendStructDecoder.DecodedRecord>, blenderVersion: String? = null): List<LayerInfo> =
         records.map { record ->
             LayerInfo(
                 domain = domain,
                 name = (record.fields["name"] as? String)?.trim()?.takeIf { it.isNotEmpty() } ?: "(unnamed layer)",
                 typeId = readCount(record.fields["type"]),
+                typeLabel = BlendCustomDataType.label(readCount(record.fields["type"]), blenderVersion),
                 hasDataAddress = (readPointer(record.fields["data"]) ?: 0L) > 0L
             )
         }

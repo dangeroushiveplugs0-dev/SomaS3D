@@ -241,7 +241,7 @@ class MainActivity : Activity() {
                 val ending = if (result.endedCleanly) "ENDB terminator found" else "File ending not validated"
                 val dataLine = targeted?.let {
                     "\nObject/Mesh blocks: ${it.decoded.decodedBlockCount} decoded · ${it.decoded.failedBlockCount} unsupported/failed" +
-                        "\nNormalized meshes: ${it.normalized.meshes.size} · legacy skipped ${it.normalized.skippedMeshCount - it.customGeometry.skippedMeshCount} · CustomData imported ${it.customGeometry.meshes.size}" +
+                        "\nNormalized meshes: ${it.normalized.meshes.size} · legacy skipped ${it.meshLinks.skippedMeshCount + it.normalized.skippedMeshCount - it.customGeometry.skippedMeshCount} · CustomData imported ${it.customGeometry.meshes.size}" +
                         "\nScene objects: ${it.scene.linkedObjectCount} linked · ${it.scene.skippedObjectCount} skipped" +
                         "\nMesh storage: ${it.meshLayout.kind}" +
                         "\nCustomData layers: ${it.customData.layers.size} inventoried · ${it.customData.warnings.size} warnings" +

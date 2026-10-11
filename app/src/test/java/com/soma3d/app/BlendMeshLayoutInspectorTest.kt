@@ -29,7 +29,7 @@ class BlendMeshLayoutInspectorTest {
     }
 
     @Test
-    fun detectsCustomDataLayoutWithoutClaimingGeometrySupport() {
+    fun detectsCustomDataLayoutAndReportsSupportedPayloadScope() {
         val report = BlendMeshLayoutInspector.inspect(schema(
             listOf("vdata", "edata", "ldata", "pdata"),
             setOf("CustomData", "CustomDataLayer")

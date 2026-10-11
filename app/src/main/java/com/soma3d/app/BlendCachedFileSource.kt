@@ -1,7 +1,6 @@
 package com.soma3d.app
 
 import java.io.File
-import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.RandomAccessFile
 import java.nio.ByteBuffer
@@ -10,6 +9,7 @@ import java.nio.ByteOrder
 /**
  * Cache-backed, bounded payload access for a previously scanned .blend file.
  * The cache avoids assuming that Android document-provider streams are seekable.
+ * Zstandard-compressed source files are expanded into this cache before offsets are recorded.
  */
 class BlendCachedFileSource private constructor(
     private val file: File,
@@ -72,20 +72,22 @@ class BlendCachedFileSource private constructor(
             val destination = File(cacheDirectory, temporary.name.removeSuffix(".partial") + ".blendcache")
             var total = 0L
             return try {
-                FileOutputStream(temporary).use { output ->
-                    val buffer = ByteArray(64 * 1024)
-                    while (true) {
-                        val read = input.read(buffer)
-                        if (read < 0) break
-                        if (read == 0) continue
-                        if (total > maxFileBytes - read.toLong()) {
-                            temporary.delete()
-                            return null
+                BlendInputStreams.open(input).use { decodedInput ->
+                    FileOutputStream(temporary).use { output ->
+                        val buffer = ByteArray(64 * 1024)
+                        while (true) {
+                            val read = decodedInput.read(buffer)
+                            if (read < 0) break
+                            if (read == 0) continue
+                            if (total > maxFileBytes - read.toLong()) {
+                                temporary.delete()
+                                return null
+                            }
+                            output.write(buffer, 0, read)
+                            total += read
                         }
-                        output.write(buffer, 0, read)
-                        total += read
+                        output.fd.sync()
                     }
-                    output.fd.sync()
                 }
                 if (!temporary.renameTo(destination)) {
                     temporary.copyTo(destination, overwrite = true)

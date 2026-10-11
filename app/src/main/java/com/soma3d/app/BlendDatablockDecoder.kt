@@ -195,6 +195,49 @@ class BlendDatablockDecoder(
         message: String
     ) = AddressDecodedRecords(block, firstRecord, emptyList(), false, message)
 
+
+    data class RawBytesResult(
+        val bytes: ByteArray?,
+        val block: BlendBlockReader.BlockSummary?,
+        val message: String
+    ) {
+        val success: Boolean get() = bytes != null
+    }
+
+    /**
+     * Reads a bounded byte range from a validated file-address range.
+     * This is for explicitly typed raw CustomData payloads; it never treats stored addresses
+     * as process pointers and never infers a type from an untrusted payload.
+     */
+    fun readBytesAtAddress(
+        fileAddress: Long,
+        byteCount: Int,
+        maxBytes: Int = 64 * 1024 * 1024
+    ): RawBytesResult {
+        if (fileAddress <= 0L || byteCount < 0 || maxBytes < 0 || byteCount > maxBytes) {
+            return RawBytesResult(null, null, "Raw byte range exceeds safe limits.")
+        }
+        if (byteCount == 0) return RawBytesResult(ByteArray(0), null, "No bytes requested.")
+        val entry = addressIndex.index.findContaining(fileAddress)
+            ?: return RawBytesResult(null, null, "Stored address is not inside an indexed datablock.")
+        val offset = fileAddress - entry.startAddress
+        if (offset < 0L || offset > entry.block.payloadBytes ||
+            byteCount.toLong() > entry.block.payloadBytes - offset) {
+            return RawBytesResult(null, entry.block, "Requested bytes exceed the indexed datablock payload.")
+        }
+        val payload = source.readPayload(entry.block, maxOf(maxPayloadBytes, maxBytes)).payload
+            ?: return RawBytesResult(null, entry.block, "Could not read the bounded datablock payload.")
+        val end = offset + byteCount.toLong()
+        if (end > payload.size.toLong() || offset > Int.MAX_VALUE) {
+            return RawBytesResult(null, entry.block, "Requested bytes exceed the retrieved payload.")
+        }
+        return RawBytesResult(
+            payload.copyOfRange(offset.toInt(), end.toInt()),
+            entry.block,
+            "Read $byteCount raw payload byte(s)."
+        )
+    }
+
     fun findBlockContaining(fileAddress: Long): BlendBlockReader.BlockSummary? =
         addressIndex.index.findContaining(fileAddress)?.block
 

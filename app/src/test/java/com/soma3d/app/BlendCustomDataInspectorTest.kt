@@ -60,4 +60,14 @@ class BlendCustomDataInspectorTest {
         assertEquals(1, vertexData["totlayer"])
         assertEquals(1, vertexData["maxlayer"])
     }
+    @Test
+    fun mapsKnownLayerTypeIdsUsingBlenderVersion() {
+        assertEquals("Float3", BlendCustomDataType.label(48, "360"))
+        assertEquals("Int32", BlendCustomDataType.label(11, "400"))
+        assertEquals("Quaternion", BlendCustomDataType.label(52, "400"))
+        assertEquals(null, BlendCustomDataType.label(52, "360"))
+        assertEquals(null, BlendCustomDataType.label(999, "400"))
+        assertEquals(null, BlendCustomDataType.label(48, null))
+    }
+
 }

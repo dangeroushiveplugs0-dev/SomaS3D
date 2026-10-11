@@ -20,7 +20,8 @@ class MainActivity : Activity() {
         val normalized: SomaMeshImportResult,
         val scene: BlendObjectMeshLinker.Result,
         val meshLayout: BlendMeshLayoutInspector.Report,
-        val customData: BlendCustomDataInspector.Result
+        val customData: BlendCustomDataInspector.Result,
+        val customGeometry: BlendCustomDataMeshLinker.Result
     )
 
     private lateinit var viewport: ViewportView
@@ -203,11 +204,33 @@ class MainActivity : Activity() {
                         .filter { it.success && it.typeName == "Mesh" }
                         .flatMap { it.records }
                     val meshLinks = BlendMeshDatablockLinker.link(meshRecords, decoder)
-                    val normalized = BlendMeshExtractor.extract(meshLinks.inputs)
-                    val scene = BlendObjectMeshLinker.link(objectRecords, normalized)
+                    val legacyNormalized = BlendMeshExtractor.extract(meshLinks.inputs)
                     val meshLayout = BlendMeshLayoutInspector.inspect(result.schema)
                     val customData = BlendCustomDataInspector.inspect(meshRecords, decoder, result.version)
-                    BlendImportSummary(decoded, meshLinks, normalized, scene, meshLayout, customData)
+                    val customGeometry = if (meshLayout.kind == BlendMeshLayoutInspector.Kind.CUSTOM_DATA_LAYOUT) {
+                        BlendCustomDataMeshLinker.link(meshRecords, decoder, result.littleEndian, result.version)
+                    } else {
+                        BlendCustomDataMeshLinker.Result(
+                            emptyList(), emptyList(), emptyList(), 0,
+                            "CustomData geometry path not selected for this schema."
+                        )
+                    }
+                    val legacyPairs = legacyNormalized.meshes.zip(legacyNormalized.sourceAddresses)
+                    val existingAddresses = legacyPairs.mapNotNull { it.second }.toSet()
+                    val additionalCustomPairs = customGeometry.meshes.zip(customGeometry.sourceAddresses)
+                        .filter { (mesh, address) -> address != null && address !in existingAddresses }
+                    val normalizedMeshes = legacyPairs.map { it.first } + additionalCustomPairs.map { it.first }
+                    val normalizedAddresses = legacyPairs.map { it.second } + additionalCustomPairs.map { it.second }
+                    val normalizedWarnings = legacyNormalized.warnings + customGeometry.warnings
+                    val normalized = SomaMeshImportResult(
+                        normalizedMeshes,
+                        normalizedWarnings,
+                        legacyNormalized.skippedMeshCount + customGeometry.skippedMeshCount,
+                        "Normalized ${normalizedMeshes.size} mesh(es); legacy skipped ${legacyNormalized.skippedMeshCount}, CustomData skipped ${customGeometry.skippedMeshCount}.",
+                        normalizedAddresses
+                    )
+                    val scene = BlendObjectMeshLinker.link(objectRecords, normalized)
+                    BlendImportSummary(decoded, meshLinks, normalized, scene, meshLayout, customData, customGeometry)
                 } else null
             } else null
 
@@ -218,14 +241,14 @@ class MainActivity : Activity() {
                 val ending = if (result.endedCleanly) "ENDB terminator found" else "File ending not validated"
                 val dataLine = targeted?.let {
                     "\nObject/Mesh blocks: ${it.decoded.decodedBlockCount} decoded · ${it.decoded.failedBlockCount} unsupported/failed" +
-                        "\nNormalized meshes: ${it.normalized.meshes.size} · skipped ${it.meshLinks.skippedMeshCount + it.normalized.skippedMeshCount}" +
+                        "\nNormalized meshes: ${it.normalized.meshes.size} · legacy skipped ${it.normalized.skippedMeshCount - it.customGeometry.skippedMeshCount} · CustomData imported ${it.customGeometry.meshes.size}" +
                         "\nScene objects: ${it.scene.linkedObjectCount} linked · ${it.scene.skippedObjectCount} skipped" +
                         "\nMesh storage: ${it.meshLayout.kind}" +
                         "\nCustomData layers: ${it.customData.layers.size} inventoried · ${it.customData.warnings.size} warnings" +
                         (it.customData.layers.take(4).takeIf { layers -> layers.isNotEmpty() }?.joinToString(
                             prefix = "\nLayers: ", separator = " · "
                         ) { layer -> "${layer.domain}:${layer.name} (${layer.typeLabel ?: "type ${layer.typeId ?: "?"}"})" } ?: "") +
-                        "\nWarnings: mesh links ${it.meshLinks.warnings.size} · scene ${it.scene.warnings.size} · mesh data ${it.normalized.warnings.size}"
+                        "\nWarnings: mesh links ${it.meshLinks.warnings.size} · CustomData geometry ${it.customGeometry.warnings.size} · scene ${it.scene.warnings.size}"
                 } ?: "\nObject/Mesh decoding unavailable"
                 viewport.setMeshes(targeted?.scene?.meshes ?: emptyList())
                 statusText.text = "$displayName\nBlender ${result.version ?: "unknown"} · ${result.pointerBits ?: "?"}-bit\nBlocks: ${result.blocks.size} · $schemaLine\n$ending$dataLine\n${result.message}"

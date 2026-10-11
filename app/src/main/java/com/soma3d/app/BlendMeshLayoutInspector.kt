@@ -33,18 +33,20 @@ object BlendMeshLayoutInspector {
             schema.structs.any { it.typeName == "CustomDataLayer" }
 
         val legacyFields = setOf("mvert", "mloop", "mpoly", "totvert", "totloop", "totpoly")
+        val customDataFields = setOf("vdata", "edata", "fdata", "ldata", "pdata")
+        // Modern Blender schemas can retain deprecated direct-array fields for compatibility.
+        // The modern face-offset field is a stronger signal than the mere presence of old fields.
+        if (hasCustomDataTypes && "face_offset_indices" in fields && fields.any { it in customDataFields }) {
+            return Report(
+                Kind.CUSTOM_DATA_LAYOUT, fields, true,
+                "Mesh uses a CustomData-style layout. Layer metadata is detected, but geometry remains unsupported until layer types and payloads are decoded."
+            )
+        }
+
         if (legacyFields.all { it in fields }) {
             return Report(
                 Kind.LEGACY_DIRECT_ARRAYS, fields, hasCustomDataTypes,
                 "Mesh exposes direct vertex/loop/polygon arrays; the legacy recognizer can attempt bounded decoding."
-            )
-        }
-
-        val customDataFields = setOf("vdata", "edata", "fdata", "ldata", "pdata")
-        if (hasCustomDataTypes && fields.any { it in customDataFields }) {
-            return Report(
-                Kind.CUSTOM_DATA_LAYOUT, fields, true,
-                "Mesh uses a CustomData-style layout. Layer metadata is detected, but geometry remains unsupported until layer types and payloads are decoded."
             )
         }
 

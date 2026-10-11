@@ -29,6 +29,14 @@ object BlendCustomDataMeshLinker {
         littleEndian: Boolean,
         blenderVersion: String?
     ): Result {
+        if (blenderVersion?.take(3)?.toIntOrNull() != 400) {
+            return Result(
+                emptyList(), emptyList(),
+                listOf("CustomData geometry extraction is currently restricted to Blender 4.0 file versions."),
+                0,
+                "CustomData geometry path not attempted for Blender version ${blenderVersion ?: "unknown"}."
+            )
+        }
         val meshes = ArrayList<SomaMesh>()
         val addresses = ArrayList<Long?>()
         val warnings = ArrayList<String>()

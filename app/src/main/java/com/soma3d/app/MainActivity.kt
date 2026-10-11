@@ -206,7 +206,7 @@ class MainActivity : Activity() {
                     val normalized = BlendMeshExtractor.extract(meshLinks.inputs)
                     val scene = BlendObjectMeshLinker.link(objectRecords, normalized)
                     val meshLayout = BlendMeshLayoutInspector.inspect(result.schema)
-                    val customData = BlendCustomDataInspector.inspect(meshRecords, decoder)
+                    val customData = BlendCustomDataInspector.inspect(meshRecords, decoder, result.version)
                     BlendImportSummary(decoded, meshLinks, normalized, scene, meshLayout, customData)
                 } else null
             } else null
@@ -224,7 +224,7 @@ class MainActivity : Activity() {
                         "\nCustomData layers: ${it.customData.layers.size} inventoried · ${it.customData.warnings.size} warnings" +
                         (it.customData.layers.take(4).takeIf { layers -> layers.isNotEmpty() }?.joinToString(
                             prefix = "\nLayers: ", separator = " · "
-                        ) { layer -> "${layer.domain}:${layer.name} (type ${layer.typeId ?: "?"})" } ?: "") +
+                        ) { layer -> "${layer.domain}:${layer.name} (${layer.typeLabel ?: "type ${layer.typeId ?: "?"}"})" } ?: "") +
                         "\nWarnings: mesh links ${it.meshLinks.warnings.size} · scene ${it.scene.warnings.size} · mesh data ${it.normalized.warnings.size}"
                 } ?: "\nObject/Mesh decoding unavailable"
                 viewport.setMeshes(targeted?.scene?.meshes ?: emptyList())

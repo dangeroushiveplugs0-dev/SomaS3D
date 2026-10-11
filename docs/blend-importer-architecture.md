@@ -75,8 +75,9 @@ Important limitations:
 - It does not extract meshes, armatures, shape keys, drivers, or constraints yet.
 - 64-bit stored addresses are retained only as numeric metadata; they are never dereferenced as process pointers.
 - `BlendBlockIndex.kt` builds a sorted address-range index, rejects ambiguous overlaps, and refuses zero/overflowing ranges.
-- `BlendStructDecoder.kt` computes candidate field offsets from SDNA types/declarations and accepts a layout only when the computed size exactly matches the SDNA TLEN. It can decode bounded primitive/pointer fields and numeric arrays from an already-loaded block payload.
-- This decoder is intentionally conservative: pointer-to-array declarations and layouts that do not match TLEN are rejected. Nested struct fields can contribute to layout calculation but are not yet expanded into nested decoded values.
+- `BlendStructDecoder.kt` computes candidate field offsets from SDNA types/declarations and accepts a layout only when the computed size exactly matches the SDNA TLEN. It decodes bounded primitive/pointer fields and numeric arrays from an already-loaded block payload.
+- Inline nested structs are now decoded into nested maps when their layouts independently pass the same SDNA TLEN validation. Pointer targets remain unresolved until a dedicated bounded linker resolves them; unsupported layouts still fail closed.
+- `BlendCustomDataInspector.kt` inventories CustomData layer descriptors through validated file-address resolution, with per-domain and total layer limits. It reports layer names, raw type IDs, and whether a data address exists, but does not yet interpret those type IDs as geometry payload formats.
 - The scanner still skips non-DNA payloads; the payload retrieval/import pipeline must be added before these modules can decode a selected real datablock end-to-end.
 - Resource limits and malformed-file handling need continued fuzzing and real-file tests.
 
@@ -245,3 +246,10 @@ This recognizer is intentionally not a universal Blender mesh reader. Files whos
 The import screen now sends linked scene instances to the viewport and reports object-link counts and warnings. If no object instances can be resolved safely, it falls back to normalized mesh-local geometry so a failed object link does not hide all inspectable geometry. Unit tests cover address-only linking, two transformed instances sharing one mesh, unknown addresses, and malformed transforms.
 
 This is still a conservative first path, not broad Blender compatibility. The current mesh recognizer only handles direct legacy-style `Mesh.mvert`, `Mesh.mloop`, and `Mesh.mpoly` pointers; newer CustomData layouts and many Blender features are not yet implemented. Real `.blend` fixtures from Blender 3.x and 4.x are still required before claiming version support.
+
+
+## Nested structs and CustomData metadata inventory
+
+The generic decoder now expands inline SDNA structures into nested field maps after validating the nested structure size against its SDNA TLEN. This makes inline fields such as `Mesh.vdata`, `Mesh.ldata`, and related `CustomData` records inspectable without following arbitrary pointers.
+
+`BlendCustomDataInspector.kt` uses those maps to locate each domain's `layers` pointer and `totlayer` count, then asks the address-indexed decoder for exactly that many `CustomDataLayer` records. It applies per-domain and global caps and reports layer names, raw type IDs, and whether the layer data pointer is non-zero. A type ID is deliberately not treated as a geometry decoder: the next step is version-aware mapping of verified layer storage layouts and their payload SDNA types, backed by real Blender fixtures.

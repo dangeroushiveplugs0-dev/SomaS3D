@@ -191,8 +191,9 @@ class MainActivity : Activity() {
                 return@Thread
             }
 
-            val targeted = if (result.validHeader && result.schema != null &&
-                result.pointerBits != null && result.littleEndian != null) {
+            val targeted = try {
+                if (result.validHeader && result.schema != null &&
+                    result.pointerBits != null && result.littleEndian != null) {
                 val source = BlendCachedFileSource.open(cachedFile, result.pointerBits, result.littleEndian)
                 if (source != null) {
                     val decoder = BlendDatablockDecoder(result, source)
@@ -232,7 +233,18 @@ class MainActivity : Activity() {
                     val scene = BlendObjectMeshLinker.link(objectRecords, normalized)
                     BlendImportSummary(decoded, meshLinks, normalized, scene, meshLayout, customData, customGeometry)
                 } else null
-            } else null
+                } else null
+            } catch (error: OutOfMemoryError) {
+                runOnUiThread {
+                    statusText.text = "Import stopped safely: $displayName\\nThe file needs more memory than this device can provide. Try a smaller or simpler .blend file."
+                }
+                return@Thread
+            } catch (error: Exception) {
+                runOnUiThread {
+                    statusText.text = "Import failed: $displayName\\n${error.message ?: "unsupported or malformed Blender data"}"
+                }
+                return@Thread
+            }
 
             runOnUiThread {
                 val schemaLine = result.schema?.let {

@@ -9,7 +9,8 @@ import java.io.InputStream
  * DNA1 payloads are retained only within a conservative size limit.
  */
 object BlendBlockReader {
-    private const val HEADER_BYTES = 12
+    private const val LEGACY_HEADER_BYTES = 12
+    private const val MODERN_HEADER_BYTES = 17
     private const val MAX_BLOCK_BYTES = 256L * 1024L * 1024L
     private const val MAX_DNA_BYTES = 64 * 1024 * 1024
     private const val MAX_BLOCKS = 2_000_000
@@ -51,51 +52,93 @@ object BlendBlockReader {
     )
 
     fun read(input: InputStream): Result {
-        val header = readExact(input, HEADER_BYTES)
+        val initial = readExact(input, LEGACY_HEADER_BYTES)
             ?: return failure("File is too short for a Blender header.")
-        if (String(header, 0, 7, Charsets.US_ASCII) != "BLENDER") {
+        if (String(initial, 0, 7, Charsets.US_ASCII) != "BLENDER") {
             return failure("Invalid Blender signature.")
         }
 
-        val pointerBits = when (header[7].toInt().toChar()) {
-            '-' -> 32
-            '_' -> 64
-            else -> null
-        } ?: return failure("Unknown Blender pointer-size marker.")
-        val littleEndian = when (header[8].toInt().toChar()) {
-            'v' -> true
-            'V' -> false
-            else -> null
-        } ?: return failure("Unknown Blender byte-order marker.")
-        val version = String(header, 9, 3, Charsets.US_ASCII)
-        if (!version.all { it in '0'..'9' }) return failure("Invalid Blender version field.")
+        val modernFormat = initial[7].toInt().toChar().isDigit() &&
+            initial[8].toInt().toChar().isDigit()
+        val header = if (modernFormat) {
+            val tail = readExact(input, MODERN_HEADER_BYTES - LEGACY_HEADER_BYTES)
+                ?: return failure("Blender 5.0+ header is truncated.")
+            initial + tail
+        } else initial
+
+        val pointerBits: Int
+        val littleEndian: Boolean
+        val version: String
+        val fileFormatVersion: Int
+        if (modernFormat) {
+            val headerSize = String(header, 7, 2, Charsets.US_ASCII).toIntOrNull()
+            fileFormatVersion = String(header, 10, 2, Charsets.US_ASCII).toIntOrNull() ?: -1
+            littleEndian = header[12].toInt().toChar() == 'v'
+            version = String(header, 13, 4, Charsets.US_ASCII)
+            if (headerSize != MODERN_HEADER_BYTES || header[9].toInt().toChar() != '-' ||
+                fileFormatVersion != 1 || !littleEndian || !version.all { it in '0'..'9' }) {
+                return failure("Malformed or unsupported Blender 5.0+ header.")
+            }
+            pointerBits = 64
+        } else {
+            pointerBits = when (header[7].toInt().toChar()) {
+                '-' -> 64
+                '_' -> 32
+                else -> null
+            } ?: return failure("Unknown Blender pointer-size marker.")
+            littleEndian = when (header[8].toInt().toChar()) {
+                'v' -> true
+                'V' -> false
+                else -> null
+            } ?: return failure("Unknown Blender byte-order marker.")
+            version = String(header, 9, 3, Charsets.US_ASCII)
+            if (!version.all { it in '0'..'9' }) return failure("Invalid Blender version field.")
+            fileFormatVersion = 0
+        }
 
         val blocks = ArrayList<BlockSummary>()
         var schema: Schema? = null
         var endedCleanly = false
-        var streamOffset = HEADER_BYTES.toLong()
+        var streamOffset = header.size.toLong()
 
         try {
             while (blocks.size < MAX_BLOCKS) {
-                val blockHeader = readExact(input, 4 + 4 + pointerBits / 8 + 4 + 4)
+                val blockHeaderSize = if (modernFormat) 4 + 4 + 8 + 8 + 8
+                    else 4 + 4 + pointerBits / 8 + 4 + 4
+                val blockHeader = readExact(input, blockHeaderSize)
                     ?: return Result(true, version, pointerBits, littleEndian, blocks, schema, false,
                         "Unexpected end of file before ENDB block.")
                 streamOffset = Math.addExact(streamOffset, blockHeader.size.toLong())
                 val payloadOffset = streamOffset
                 val code = String(blockHeader, 0, 4, Charsets.US_ASCII)
                 var offset = 4
-                val length = unsignedInt(blockHeader, offset, littleEndian); offset += 4
-                val oldAddress = if (pointerBits == 32) {
-                    unsignedInt(blockHeader, offset, littleEndian).also { offset += 4 }
+                val sdnaIndex: Long
+                val oldAddress: Long
+                val length: Long
+                val count: Long
+                if (modernFormat) {
+                    sdnaIndex = unsignedInt(blockHeader, offset, littleEndian); offset += 4
+                    oldAddress = longPointer(blockHeader, offset, littleEndian); offset += 8
+                    length = longPointer(blockHeader, offset, littleEndian); offset += 8
+                    count = longPointer(blockHeader, offset, littleEndian)
+                    if (oldAddress < 0L || length < 0L || count < 0L) {
+                        return Result(true, version, pointerBits, littleEndian, blocks, schema, false,
+                            "Block $code contains an unsupported unsigned 64-bit value.")
+                    }
                 } else {
-                    longPointer(blockHeader, offset, littleEndian).also { offset += 8 }
+                    length = unsignedInt(blockHeader, offset, littleEndian); offset += 4
+                    oldAddress = if (pointerBits == 32) {
+                        unsignedInt(blockHeader, offset, littleEndian).also { offset += 4 }
+                    } else {
+                        longPointer(blockHeader, offset, littleEndian).also { offset += 8 }
+                    }
+                    sdnaIndex = unsignedInt(blockHeader, offset, littleEndian); offset += 4
+                    count = unsignedInt(blockHeader, offset, littleEndian)
                 }
-                val sdnaIndex = unsignedInt(blockHeader, offset, littleEndian); offset += 4
-                val count = unsignedInt(blockHeader, offset, littleEndian)
 
                 if (length > MAX_BLOCK_BYTES) {
                     return Result(true, version, pointerBits, littleEndian, blocks, schema, false,
-                        "Block " + code + " exceeds the safe 256 MiB per-block limit.")
+                        "Block $code exceeds the safe 256 MiB per-block limit.")
                 }
 
                 if (code == "DNA1") {
@@ -114,7 +157,7 @@ object BlendBlockReader {
                 } else {
                     if (!skipExact(input, length)) {
                         return Result(true, version, pointerBits, littleEndian, blocks, schema, false,
-                            "Block " + code + " payload is truncated.")
+                            "Block $code payload is truncated.")
                     }
                 }
                 streamOffset = Math.addExact(streamOffset, length)
@@ -144,7 +187,7 @@ object BlendBlockReader {
         }
         return Result(true, version, pointerBits, littleEndian, blocks, schema, true,
             "Scanned " + blocks.size + " blocks; SDNA contains " + schema.types.size +
-                " types and " + schema.structs.size + " structures. Object and mesh extraction is not implemented yet.")
+                " types and " + schema.structs.size + " structures.")
     }
 
     private fun parseSchema(bytes: ByteArray, littleEndian: Boolean): Schema? {

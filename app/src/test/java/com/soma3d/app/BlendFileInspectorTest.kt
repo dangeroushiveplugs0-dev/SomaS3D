@@ -9,7 +9,7 @@ import org.junit.Test
 class BlendFileInspectorTest {
     @Test
     fun recognizes32BitLittleEndianHeader() {
-        val result = inspect("BLENDER-v300")
+        val result = inspect("BLENDER_v300")
 
         assertTrue(result.valid)
         assertEquals("300", result.version)
@@ -19,7 +19,7 @@ class BlendFileInspectorTest {
 
     @Test
     fun recognizes64BitLittleEndianHeader() {
-        val result = inspect("BLENDER_v400")
+        val result = inspect("BLENDER-v400")
 
         assertTrue(result.valid)
         assertEquals("400", result.version)

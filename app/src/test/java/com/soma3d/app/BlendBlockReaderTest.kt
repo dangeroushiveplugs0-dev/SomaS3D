@@ -125,7 +125,8 @@ class BlendBlockReaderTest {
     private fun writeLong(out: ByteArrayOutputStream, value: Long) {
         repeat(8) { shift -> out.write(((value ushr (shift * 8)) and 0xff).toInt()) }
     }
-\n    private fun writeBlockHeader(out: ByteArrayOutputStream, code: String, length: Long) {
+
+    private fun writeBlockHeader(out: ByteArrayOutputStream, code: String, length: Long) {
         out.write(code.toByteArray(StandardCharsets.US_ASCII))
         writeInt(out, length.toInt())
         repeat(8) { out.write(0) }

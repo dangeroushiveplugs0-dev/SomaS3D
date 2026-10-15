@@ -22,7 +22,8 @@ class MainActivity : Activity() {
         val meshLayout: BlendMeshLayoutInspector.Report,
         val customData: BlendCustomDataInspector.Result,
         val customGeometry: BlendCustomDataMeshLinker.Result,
-        val shapeKeys: BlendShapeKeyImportResult
+        val shapeKeys: BlendShapeKeyImportResult,
+        val rigs: BlendRigImportResult
     )
 
     private lateinit var viewport: ViewportView
@@ -207,6 +208,7 @@ class MainActivity : Activity() {
                         .filter { it.success && it.typeName == "Mesh" }
                         .flatMap { it.records }
                     val shapeKeys = BlendShapeKeyImporter.readShapeKeys(meshRecords, decoder, result.littleEndian)
+                    val rigs = BlendRigImporter.readRigs(objectRecords, decoder)
                     val meshLinks = BlendMeshDatablockLinker.link(meshRecords, decoder)
                     val legacyNormalized = BlendMeshExtractor.extract(meshLinks.inputs)
                     val meshLayout = BlendMeshLayoutInspector.inspect(result.schema)
@@ -234,7 +236,7 @@ class MainActivity : Activity() {
                         normalizedAddresses
                     )
                     val scene = BlendObjectMeshLinker.link(objectRecords, normalized)
-                    BlendImportSummary(decoded, meshLinks, normalized, scene, meshLayout, customData, customGeometry, shapeKeys)
+                    BlendImportSummary(decoded, meshLinks, normalized, scene, meshLayout, customData, customGeometry, shapeKeys, rigs)
                 } else null
                 } else null
             } catch (error: OutOfMemoryError) {
@@ -259,13 +261,14 @@ class MainActivity : Activity() {
                         "\nNormalized meshes: ${it.normalized.meshes.size} · legacy skipped ${it.meshLinks.skippedMeshCount + it.normalized.skippedMeshCount - it.customGeometry.skippedMeshCount} · CustomData imported ${it.customGeometry.meshes.size}" +
                         "\nScene objects: ${it.scene.linkedObjectCount} linked · ${it.scene.skippedObjectCount} skipped" +
                         "\nShape keys: ${it.shapeKeys.sets.sumOf { set -> set.keys.size }} coordinate sets across ${it.shapeKeys.sets.size} mesh(es)" +
+                        "\nArmatures: ${it.rigs.rigs.size} · bones: ${it.rigs.rigs.sumOf { rig -> rig.bones.size }}" +
                         "\nMesh storage: ${it.meshLayout.kind}" +
                         "\nCustomData layers: ${it.customData.layers.size} inventoried · ${it.customData.warnings.size} warnings" +
                         (it.customData.layers.take(4).takeIf { layers -> layers.isNotEmpty() }?.joinToString(
                             prefix = "\nLayers: ", separator = " · "
                         ) { layer -> "${layer.domain}:${layer.name} (${layer.typeLabel ?: "type ${layer.typeId ?: "?"}"})" } ?: "") +
                         (it.shapeKeys.sets.flatMap { set -> set.keys }.take(6).takeIf { keys -> keys.isNotEmpty() }?.joinToString(prefix = "\nKeys: ", separator = " · ") { key -> key.name } ?: "") +
-                        "\nWarnings: mesh links ${it.meshLinks.warnings.size} · legacy geometry ${it.normalized.warnings.size - it.customGeometry.warnings.size} · CustomData geometry ${it.customGeometry.warnings.size} · shape keys ${it.shapeKeys.warnings.size} · scene ${it.scene.warnings.size}"
+                        "\nWarnings: mesh links ${it.meshLinks.warnings.size} · legacy geometry ${it.normalized.warnings.size - it.customGeometry.warnings.size} · CustomData geometry ${it.customGeometry.warnings.size} · shape keys ${it.shapeKeys.warnings.size} · rigs ${it.rigs.warnings.size} · scene ${it.scene.warnings.size}"
                 } ?: "\nObject/Mesh decoding unavailable"
                 viewport.setMeshes(targeted?.scene?.meshes ?: emptyList())
                 statusText.text = "$displayName\nBlender ${result.version ?: "unknown"} · ${result.pointerBits ?: "?"}-bit\nBlocks: ${result.blocks.size} · $schemaLine\n$ending$dataLine\n${result.message}"

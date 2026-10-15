@@ -33,7 +33,7 @@ object BlendShapeKeyImporter {
     private const val MAX_VERTICES_PER_KEY = 2_000_000
     private const val MAX_BYTES_PER_KEY = 24 * 1024 * 1024
 
-    fun import(
+    fun readShapeKeys(
         meshRecords: List<BlendStructDecoder.DecodedRecord>,
         decoder: BlendDatablockDecoder,
         littleEndian: Boolean

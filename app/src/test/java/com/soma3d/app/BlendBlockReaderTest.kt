@@ -36,7 +36,7 @@ class BlendBlockReaderTest {
 
     @Test
     fun reportsTruncatedBlockHeader() {
-        val bytes = "BLENDER_v400".toByteArray(StandardCharsets.US_ASCII) + byteArrayOf(1, 2, 3)
+        val bytes = "BLENDER-v400".toByteArray(StandardCharsets.US_ASCII) + byteArrayOf(1, 2, 3)
         val result = BlendBlockReader.read(ByteArrayInputStream(bytes))
 
         assertTrue(result.validHeader)
@@ -82,7 +82,36 @@ class BlendBlockReaderTest {
         return out.toByteArray()
     }
 
-    private fun writeBlockHeader(out: ByteArrayOutputStream, code: String, length: Long) {
+
+    private fun minimalModernBlendFile(): ByteArray {
+        val out = ByteArrayOutputStream()
+        out.write("BLENDER17-01v0500".toByteArray(StandardCharsets.US_ASCII))
+        val dna = ByteArrayOutputStream()
+        dna.write("SDNANAME".toByteArray(StandardCharsets.US_ASCII))
+        writeInt(dna, 0)
+        dna.write("TYPE".toByteArray(StandardCharsets.US_ASCII))
+        writeInt(dna, 0)
+        dna.write("TLEN".toByteArray(StandardCharsets.US_ASCII))
+        dna.write("STRC".toByteArray(StandardCharsets.US_ASCII))
+        writeInt(dna, 0)
+        writeModernBlockHeader(out, "DNA1", dna.size().toLong())
+        out.write(dna.toByteArray())
+        writeModernBlockHeader(out, "ENDB", 0L)
+        return out.toByteArray()
+    }
+
+    private fun writeModernBlockHeader(out: ByteArrayOutputStream, code: String, length: Long) {
+        out.write(code.toByteArray(StandardCharsets.US_ASCII))
+        writeInt(out, 0) // SDNA index
+        repeat(8) { out.write(0) } // stored file address
+        writeLong(out, length)
+        writeLong(out, 0L) // record count
+    }
+
+    private fun writeLong(out: ByteArrayOutputStream, value: Long) {
+        repeat(8) { shift -> out.write(((value ushr (shift * 8)) and 0xff).toInt()) }
+    }
+\n    private fun writeBlockHeader(out: ByteArrayOutputStream, code: String, length: Long) {
         out.write(code.toByteArray(StandardCharsets.US_ASCII))
         writeInt(out, length.toInt())
         repeat(8) { out.write(0) }

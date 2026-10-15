@@ -28,6 +28,17 @@ class BlendFileInspectorTest {
     }
 
     @Test
+    fun recognizesBlenderFiveModernHeader() {
+        val result = inspect("BLENDER17-01v0500")
+
+        assertTrue(result.valid)
+        assertEquals("0500", result.version)
+        assertEquals(64, result.pointerBits)
+        assertEquals(true, result.littleEndian)
+        assertEquals(1, result.fileFormatVersion)
+    }
+
+    @Test
     fun recognizesBigEndianHeader() {
         val result = inspect("BLENDER_V280")
 

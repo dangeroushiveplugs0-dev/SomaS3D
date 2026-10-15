@@ -15,7 +15,8 @@ object BlendObjectMeshLinker {
 
     fun link(
         objects: List<BlendStructDecoder.DecodedRecord>,
-        normalized: SomaMeshImportResult
+        normalized: SomaMeshImportResult,
+        shapeKeySets: List<SomaShapeKeySet> = emptyList()
     ): Result {
         val warnings = ArrayList<String>()
         val addresses = normalized.sourceAddresses
@@ -24,6 +25,11 @@ object BlendObjectMeshLinker {
             return Result(normalized.meshes, warnings, 0, objects.size, true)
         }
 
+        val shapeKeysByAddress = shapeKeySets.groupBy { it.meshAddress }
+            .mapValues { (_, sets) -> sets.flatMap { it.keys } }
+        val sourceMeshes = normalized.meshes.mapIndexed { index, mesh ->
+            mesh.copy(shapeKeys = shapeKeysByAddress[addresses[index]].orEmpty())
+        }
         val byAddress = addresses.indices
             .filter { addresses[it] != null && addresses[it]!! > 0L }
             .groupBy { addresses[it]!! }
@@ -49,7 +55,7 @@ object BlendObjectMeshLinker {
                 continue
             }
 
-            val sourceMesh = normalized.meshes[matchingIndices.single()]
+            val sourceMesh = sourceMeshes[matchingIndices.single()]
             val instance = sourceMesh.copy(name = objectLabel)
             val transformed = SomaObjectTransform.apply(instance, objectRecord.fields["obmat"])
             if (!transformed.applied || transformed.mesh == null) {
@@ -66,7 +72,7 @@ object BlendObjectMeshLinker {
             } else {
                 warnings.add("No Object datablocks were decoded; showing normalized meshes in mesh-local coordinates.")
             }
-            return Result(normalized.meshes, warnings, 0, skipped, true)
+            return Result(sourceMeshes, warnings, 0, skipped, true)
         }
 
         if (skipped > 0) warnings.add("$skipped object instance(s) were not linked.")

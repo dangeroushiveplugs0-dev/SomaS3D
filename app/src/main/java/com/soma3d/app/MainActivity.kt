@@ -235,7 +235,7 @@ class MainActivity : Activity() {
                         "Normalized ${normalizedMeshes.size} mesh(es); legacy skipped ${legacyNormalized.skippedMeshCount}, CustomData skipped ${customGeometry.skippedMeshCount}.",
                         normalizedAddresses
                     )
-                    val scene = BlendObjectMeshLinker.link(objectRecords, normalized)
+                    val scene = BlendObjectMeshLinker.link(objectRecords, normalized, shapeKeys.sets)
                     BlendImportSummary(decoded, meshLinks, normalized, scene, meshLayout, customData, customGeometry, shapeKeys, rigs)
                 } else null
                 } else null

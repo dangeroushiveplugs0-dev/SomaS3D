@@ -128,7 +128,7 @@ object BlendShapeKeyImporter {
     }
 
     internal fun decodeFloat3(bytes: ByteArray, count: Int, littleEndian: Boolean): List<SomaVector3>? {
-        if (count < 0 || bytes.size != count.toLong() * 12L) return null
+        if (count < 0 || bytes.size.toLong() != count.toLong() * 12L) return null
         val buffer = java.nio.ByteBuffer.wrap(bytes).order(
             if (littleEndian) java.nio.ByteOrder.LITTLE_ENDIAN else java.nio.ByteOrder.BIG_ENDIAN
         )

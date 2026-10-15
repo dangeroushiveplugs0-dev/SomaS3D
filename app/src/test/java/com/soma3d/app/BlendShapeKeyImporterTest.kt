@@ -26,4 +26,12 @@ class BlendShapeKeyImporterTest {
             .putFloat(Float.NaN).putFloat(0f).putFloat(0f).array()
         assertNull(BlendShapeKeyImporter.decodeFloat3(bytes, 1, true))
     }
+
+    @Test
+    fun readsBlenderKeyBlockCurrentValue() {
+        assertEquals(1.4, BlendShapeKeyImporter.readShapeKeyValue(mapOf("curval" to 1.4f)), 0.0001)
+        assertEquals(0.25, BlendShapeKeyImporter.readShapeKeyValue(mapOf("value" to 0.25)), 0.0001)
+        assertEquals(0.0, BlendShapeKeyImporter.readShapeKeyValue(emptyMap()), 0.0)
+    }
+
 }

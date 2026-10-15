@@ -78,4 +78,33 @@ class BlendObjectMeshLinkerTest {
         assertTrue(result.usedMeshFallback)
         assertTrue(result.warnings.any { it.contains("transform was not applied") })
     }
+
+    @Test
+    fun attachesShapeKeysByMeshAddressAndTransformsTheirCoordinates() {
+        val key = SomaShapeKey(
+            name = "Smile",
+            value = 0.75,
+            relativeKeyName = "Basis",
+            coordinates = listOf(SomaVector3(2.0, 2.0, 3.0))
+        )
+        val keySet = SomaShapeKeySet(
+            meshAddress = 0x1000L,
+            meshName = "SharedMesh",
+            keys = listOf(key)
+        )
+
+        val result = BlendObjectMeshLinker.link(
+            listOf(objectRecord("Left", 0x1000L, translated(-5.0))),
+            normalized(),
+            listOf(keySet)
+        )
+
+        assertEquals(1, result.meshes.single().shapeKeys.size)
+        assertEquals("Smile", result.meshes.single().shapeKeys.single().name)
+        assertEquals(0.75, result.meshes.single().shapeKeys.single().value, 0.0001)
+        assertEquals(
+            SomaVector3(-3.0, 2.0, 3.0),
+            result.meshes.single().shapeKeys.single().coordinates.single()
+        )
+    }
 }

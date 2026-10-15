@@ -15,7 +15,9 @@ data class SomaMesh(
     val name: String,
     val vertices: List<SomaVector3>,
     val polygons: List<SomaPolygon>,
-    val warnings: List<String> = emptyList()
+    val warnings: List<String> = emptyList(),
+    /** Shape-key coordinate sets attached to this mesh after address-based linking. */
+    val shapeKeys: List<SomaShapeKey> = emptyList()
 )
 
 data class SomaMeshImportResult(

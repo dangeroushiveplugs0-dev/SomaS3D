@@ -34,4 +34,27 @@ class BlendShapeKeyImporterTest {
         assertEquals(0.0, BlendShapeKeyImporter.readShapeKeyValue(emptyMap()), 0.0)
     }
 
+
+    @Test
+    fun evaluatesRelativeShapeKeyValuesForViewportPreview() {
+        val base = listOf(SomaVector3(0.0, 0.0, 0.0), SomaVector3(1.0, 0.0, 0.0))
+        val mesh = SomaMesh(
+            name = "Test",
+            vertices = base,
+            polygons = emptyList(),
+            shapeKeys = listOf(
+                SomaShapeKey("Basis", 0.0, "Basis", base),
+                SomaShapeKey(
+                    "Raise", 0.5, "Basis",
+                    listOf(SomaVector3(0.0, 2.0, 0.0), SomaVector3(1.0, 2.0, 0.0))
+                )
+            )
+        )
+
+        assertEquals(
+            listOf(SomaVector3(0.0, 1.0, 0.0), SomaVector3(1.0, 1.0, 0.0)),
+            SomaShapeKeyEvaluator.evaluate(mesh)
+        )
+    }
+
 }

@@ -8,6 +8,8 @@ import android.view.Gravity
 import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
 import java.io.File
@@ -29,6 +31,11 @@ class MainActivity : Activity() {
     private lateinit var viewport: ViewportView
     private lateinit var statusText: TextView
     private var selectedBlendUri: Uri? = null
+    private var importedSceneMeshes: List<SomaMesh> = emptyList()
+    private val hiddenObjectNames = LinkedHashSet<String>()
+    private lateinit var objectToggleRow: LinearLayout
+    private lateinit var shapeKeyPanel: LinearLayout
+    private var updatingShapeControls = false
 
     private val pickBlendFile = 4101
 
@@ -86,6 +93,28 @@ class MainActivity : Activity() {
             setPadding(dp(2), 0, dp(2), dp(8))
         }
         bottom.addView(statusText)
+
+        bottom.addView(TextView(this).apply {
+            text = "SHAPE KEYS"
+            setTextColor(android.graphics.Color.rgb(135, 149, 169))
+            textSize = 10f
+            setPadding(dp(2), dp(2), dp(2), dp(3))
+        })
+        val shapeScroll = ScrollView(this).apply { overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS }
+        shapeKeyPanel = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        shapeScroll.addView(shapeKeyPanel)
+        bottom.addView(shapeScroll, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(112)))
+
+        bottom.addView(TextView(this).apply {
+            text = "OBJECTS / OUTFITS"
+            setTextColor(android.graphics.Color.rgb(135, 149, 169))
+            textSize = 10f
+            setPadding(dp(2), dp(5), dp(2), dp(3))
+        })
+        val objectScroll = ScrollView(this).apply { overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS }
+        objectToggleRow = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        objectScroll.addView(objectToggleRow)
+        bottom.addView(objectScroll, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(72)))
 
         val buttons = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -270,7 +299,11 @@ class MainActivity : Activity() {
                         (it.shapeKeys.sets.flatMap { set -> set.keys }.take(6).takeIf { keys -> keys.isNotEmpty() }?.joinToString(prefix = "\nKeys: ", separator = " · ") { key -> key.name } ?: "") +
                         "\nWarnings: mesh links ${it.meshLinks.warnings.size} · legacy geometry ${it.normalized.warnings.size - it.customGeometry.warnings.size} · CustomData geometry ${it.customGeometry.warnings.size} · shape keys ${it.shapeKeys.warnings.size} · rigs ${it.rigs.warnings.size} · scene ${it.scene.warnings.size}"
                 } ?: "\nObject/Mesh decoding unavailable"
-                viewport.setMeshes(targeted?.scene?.meshes ?: emptyList())
+                importedSceneMeshes = targeted?.scene?.meshes ?: emptyList()
+                hiddenObjectNames.clear()
+                rebuildObjectToggles()
+                rebuildShapeKeyControls()
+                applyVisibleScene()
                 statusText.text = "$displayName\nBlender ${result.version ?: "unknown"} · ${result.pointerBits ?: "?"}-bit\nBlocks: ${result.blocks.size} · $schemaLine\n$ending$dataLine\n${result.message}"
             }
             } catch (error: OutOfMemoryError) {
@@ -285,6 +318,52 @@ class MainActivity : Activity() {
         }.start()
     }
 
+    private fun applyVisibleScene() {
+        viewport.setMeshes(importedSceneMeshes.filter { it.name !in hiddenObjectNames })
+    }
+
+    private fun rebuildObjectToggles() {
+        objectToggleRow.removeAllViews()
+        if (importedSceneMeshes.isEmpty()) {
+            objectToggleRow.addView(TextView(this).apply { text = "Import a model to toggle its objects."; setTextColor(android.graphics.Color.rgb(168, 181, 198)); textSize = 11f })
+            return
+        }
+        for (mesh in importedSceneMeshes.distinctBy { it.name }) {
+            val visible = mesh.name !in hiddenObjectNames
+            objectToggleRow.addView(makeButton((if (visible) "✓  " else "○  ") + mesh.name) {
+                if (mesh.name in hiddenObjectNames) hiddenObjectNames.remove(mesh.name) else hiddenObjectNames.add(mesh.name)
+                rebuildObjectToggles(); applyVisibleScene()
+            }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(38)).apply { bottomMargin = dp(2) })
+        }
+    }
+
+    private fun rebuildShapeKeyControls() {
+        updatingShapeControls = true; shapeKeyPanel.removeAllViews()
+        val entries = importedSceneMeshes.flatMap { mesh -> mesh.shapeKeys.filter { it.name != it.relativeKeyName }.map { key -> mesh.name to key } }.distinctBy { it.first to it.second.name }
+        if (entries.isEmpty()) {
+            shapeKeyPanel.addView(TextView(this).apply { text = "No imported shape keys found."; setTextColor(android.graphics.Color.rgb(168, 181, 198)); textSize = 11f })
+            updatingShapeControls = false; return
+        }
+        for ((meshName, key) in entries) {
+            val label = TextView(this).apply { text = "$meshName · ${key.name}  ${"%.2f".format(java.util.Locale.US, key.value)}"; setTextColor(android.graphics.Color.rgb(218, 225, 235)); textSize = 11f; setPadding(dp(2), dp(2), dp(2), 0) }
+            shapeKeyPanel.addView(label)
+            val slider = SeekBar(this).apply {
+                max = 100; progress = (key.value.coerceIn(0.0, 1.0) * 100.0).toInt(); contentDescription = "Shape key ${key.name}"
+                setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                    override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                        if (!fromUser || updatingShapeControls) return
+                        val newValue = progress / 100.0
+                        importedSceneMeshes = importedSceneMeshes.map { mesh -> if (mesh.name != meshName) mesh else mesh.copy(shapeKeys = mesh.shapeKeys.map { existing -> if (existing.name == key.name) existing.copy(value = newValue) else existing }) }
+                        label.text = "$meshName · ${key.name}  ${"%.2f".format(java.util.Locale.US, newValue)}"; applyVisibleScene()
+                    }
+                    override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
+                    override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
+                })
+            }
+            shapeKeyPanel.addView(slider, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(34)))
+        }
+        updatingShapeControls = false
+    }
     private fun queryDisplayName(uri: Uri): String? {
         val cursor = contentResolver.query(uri, null, null, null, null) ?: return null
         cursor.use {

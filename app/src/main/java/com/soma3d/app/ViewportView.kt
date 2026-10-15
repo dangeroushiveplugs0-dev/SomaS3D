@@ -104,8 +104,11 @@ class ViewportView(context: Context) : View(context) {
 
     /** Replaces the visible scene with normalized mesh data and frames it for the viewport. */
     fun setMeshes(meshes: List<SomaMesh>) {
-        sceneMeshes = meshes
-        frameMeshes(meshes)
+        // Evaluate current imported shape-key values once per scene update, not per frame.
+        sceneMeshes = meshes.map { mesh ->
+            mesh.copy(vertices = SomaShapeKeyEvaluator.evaluate(mesh))
+        }
+        frameMeshes(sceneMeshes)
         invalidate()
     }
 

@@ -21,7 +21,8 @@ class MainActivity : Activity() {
         val scene: BlendObjectMeshLinker.Result,
         val meshLayout: BlendMeshLayoutInspector.Report,
         val customData: BlendCustomDataInspector.Result,
-        val customGeometry: BlendCustomDataMeshLinker.Result
+        val customGeometry: BlendCustomDataMeshLinker.Result,
+        val shapeKeys: BlendShapeKeyImportResult
     )
 
     private lateinit var viewport: ViewportView
@@ -205,6 +206,7 @@ class MainActivity : Activity() {
                     val meshRecords = decoded.blocks
                         .filter { it.success && it.typeName == "Mesh" }
                         .flatMap { it.records }
+                    val shapeKeys = BlendShapeKeyImporter.import(meshRecords, decoder, result.littleEndian)
                     val meshLinks = BlendMeshDatablockLinker.link(meshRecords, decoder)
                     val legacyNormalized = BlendMeshExtractor.extract(meshLinks.inputs)
                     val meshLayout = BlendMeshLayoutInspector.inspect(result.schema)
@@ -232,7 +234,7 @@ class MainActivity : Activity() {
                         normalizedAddresses
                     )
                     val scene = BlendObjectMeshLinker.link(objectRecords, normalized)
-                    BlendImportSummary(decoded, meshLinks, normalized, scene, meshLayout, customData, customGeometry)
+                    BlendImportSummary(decoded, meshLinks, normalized, scene, meshLayout, customData, customGeometry, shapeKeys)
                 } else null
                 } else null
             } catch (error: OutOfMemoryError) {

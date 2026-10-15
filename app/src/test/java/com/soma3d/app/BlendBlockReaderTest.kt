@@ -79,7 +79,7 @@ class BlendBlockReaderTest {
 
     private fun minimalBlendFile(): ByteArray {
         val out = ByteArrayOutputStream()
-        out.write("BLENDER_v400".toByteArray(StandardCharsets.US_ASCII))
+        out.write("BLENDER-v400".toByteArray(StandardCharsets.US_ASCII))
 
         val dna = ByteArrayOutputStream()
         dna.write("SDNANAME".toByteArray(StandardCharsets.US_ASCII))

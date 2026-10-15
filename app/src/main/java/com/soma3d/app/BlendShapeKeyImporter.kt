@@ -99,12 +99,12 @@ object BlendShapeKeyImporter {
                             localWarnings.add("$name: coordinate payload was unavailable or invalid.")
                         } else if (baseVertexCount != null && coordinates.size != baseVertexCount) {
                             localWarnings.add("$name: vertex count differs from the preceding key; key retained but may not be compatible.")
-                            keys.add(SomaShapeKey(name, finiteNumber(record.fields["value"]) ?: 0.0,
+                            keys.add(SomaShapeKey(name, readShapeKeyValue(record.fields),
                                 null, coordinates))
                             relativeIndices.add(relativeIndex)
                         } else {
                             if (baseVertexCount == null) baseVertexCount = coordinates.size
-                            keys.add(SomaShapeKey(name, finiteNumber(record.fields["value"]) ?: 0.0,
+                            keys.add(SomaShapeKey(name, readShapeKeyValue(record.fields),
                                 null, coordinates))
                             relativeIndices.add(relativeIndex)
                         }
@@ -137,6 +137,10 @@ object BlendShapeKeyImporter {
             "Imported shape-key coordinates for ${sets.size} mesh(es); skipped $skipped."
         )
     }
+
+
+    internal fun readShapeKeyValue(fields: Map<String, Any>): Double =
+        finiteNumber(fields["curval"] ?: fields["value"]) ?: 0.0
 
     internal fun decodeFloat3(bytes: ByteArray, count: Int, littleEndian: Boolean): List<SomaVector3>? {
         if (count < 0 || bytes.size.toLong() != count.toLong() * 12L) return null

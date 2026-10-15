@@ -63,12 +63,14 @@ object BlendShapeKeyImporter {
             }
 
             val keys = ArrayList<SomaShapeKey>()
+            val relativeIndices = ArrayList<Int?>()
+            val blockNames = ArrayList<String>()
             val localWarnings = ArrayList<String>()
             val visited = HashSet<Long>()
             var address: Long? = firstBlock
             var baseVertexCount: Int? = null
 
-            while (address != null && address > 0L && keys.size < MAX_KEYS_PER_MESH) {
+            while (address != null && address > 0L && visited.size < MAX_KEYS_PER_MESH) {
                 if (!visited.add(address)) {
                     localWarnings.add("KeyBlock linked list contains a cycle; traversal stopped.")
                     break
@@ -79,7 +81,9 @@ object BlendShapeKeyImporter {
                     localWarnings.add("A KeyBlock record could not be decoded; traversal stopped.")
                     break
                 }
-                val name = readName(record.fields["name"]) ?: "Shape Key ${keys.size + 1}"
+                val name = readName(record.fields["name"]) ?: "Shape Key ${blockNames.size + 1}"
+                blockNames.add(name)
+                val relativeIndex = integer(record.fields["relative"])
                 val count = integer(record.fields["totelem"])
                 val dataAddress = pointer(record.fields["data"])
                 if (count == null || count !in 0..MAX_VERTICES_PER_KEY) {
@@ -96,11 +100,13 @@ object BlendShapeKeyImporter {
                         } else if (baseVertexCount != null && coordinates.size != baseVertexCount) {
                             localWarnings.add("$name: vertex count differs from the preceding key; key retained but may not be compatible.")
                             keys.add(SomaShapeKey(name, finiteNumber(record.fields["value"]) ?: 0.0,
-                                relativeName(record, keyRecord), coordinates))
+                                null, coordinates))
+                            relativeIndices.add(relativeIndex)
                         } else {
                             if (baseVertexCount == null) baseVertexCount = coordinates.size
                             keys.add(SomaShapeKey(name, finiteNumber(record.fields["value"]) ?: 0.0,
-                                relativeName(record, keyRecord), coordinates))
+                                null, coordinates))
+                            relativeIndices.add(relativeIndex)
                         }
                     }
                 } else {
@@ -109,15 +115,20 @@ object BlendShapeKeyImporter {
                 address = pointer(record.fields["next"])
             }
 
-            if (address != null && address > 0L && keys.size >= MAX_KEYS_PER_MESH) {
+            if (address != null && address > 0L && visited.size >= MAX_KEYS_PER_MESH) {
                 localWarnings.add("Shape-key count exceeded the safe limit of $MAX_KEYS_PER_MESH.")
+            }
+            val resolvedKeys = keys.mapIndexed { index, key ->
+                val relativeIndex = relativeIndices.getOrNull(index)
+                val relativeName = relativeIndex?.let { blockNames.getOrNull(it) ?: "relative index $it" }
+                key.copy(relativeKeyName = relativeName)
             }
             if (keys.isEmpty()) {
                 warnings.add("$meshName: no usable shape-key coordinate sets were found.")
                 warnings.addAll(localWarnings.map { "$meshName: $it" })
                 skipped++
             } else {
-                sets.add(SomaShapeKeySet(meshAddress ?: keyAddress, meshName, keys, localWarnings))
+                sets.add(SomaShapeKeySet(meshAddress ?: keyAddress, meshName, resolvedKeys, localWarnings))
                 warnings.addAll(localWarnings.map { "$meshName: $it" })
             }
         }
@@ -141,14 +152,6 @@ object BlendShapeKeyImporter {
             result.add(SomaVector3(x, y, z))
         }
         return result
-    }
-
-    private fun relativeName(block: BlendStructDecoder.DecodedRecord, key: BlendStructDecoder.DecodedRecord): String? {
-        val relative = integer(block.fields["relative"])
-        val names = key.fields["block"] as? List<*>
-        // Blender's relative field is commonly an index, not a pointer. Preserve its index label
-        // when a reliable name cannot be resolved instead of guessing a relationship.
-        return relative?.let { "relative index $it" }
     }
 
     private fun readName(value: Any?): String? = (value as? String)?.trim()

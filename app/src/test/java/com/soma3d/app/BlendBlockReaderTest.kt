@@ -27,6 +27,20 @@ class BlendBlockReaderTest {
     }
 
     @Test
+    fun scansModernBlenderFiveBlockStream() {
+        val result = BlendBlockReader.read(ByteArrayInputStream(minimalModernBlendFile()))
+
+        assertTrue(result.validHeader)
+        assertEquals("0500", result.version)
+        assertEquals(64, result.pointerBits)
+        assertTrue(result.endedCleanly)
+        assertEquals(2, result.blocks.size)
+        assertEquals("DNA1", result.blocks[0].code)
+        assertEquals(49L, result.blocks[0].payloadOffset)
+        assertNotNull(result.schema)
+    }
+
+    @Test
     fun rejectsFileWithoutBlenderHeader() {
         val result = BlendBlockReader.read(ByteArrayInputStream("not blender!!".toByteArray()))
 

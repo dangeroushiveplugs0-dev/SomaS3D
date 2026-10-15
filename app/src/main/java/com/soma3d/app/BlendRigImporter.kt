@@ -54,23 +54,22 @@ object BlendRigImporter {
 
             val records = ArrayList<BlendStructDecoder.DecodedRecord>()
             val visited = HashSet<Long>()
-            var address: Long? = firstBone
-            while (address != null && address > 0L && records.size < MAX_BONES_PER_RIG) {
-                if (!visited.add(address)) {
-                    warnings.add("$objectName: Bone linked list contains a cycle; traversal stopped.")
-                    break
-                }
-                val bone = decoder.decodeRecordsAtAddress(address, "Bone", 1).records.firstOrNull()
+            val pending = ArrayDeque<Long>()
+            pending.add(firstBone)
+            while (pending.isNotEmpty() && records.size < MAX_BONES_PER_RIG) {
+                val currentAddress = pending.removeLast()
+                if (currentAddress <= 0L || !visited.add(currentAddress)) continue
+                val bone = decoder.decodeRecordsAtAddress(currentAddress, "Bone", 1).records.firstOrNull()
                 if (bone == null) {
-                    warnings.add("$objectName: a Bone record could not be decoded; traversal stopped.")
-                    break
+                    warnings.add("$objectName: a Bone record could not be decoded; traversal continued.")
+                    continue
                 }
                 records.add(bone)
-                address = pointer(bone.fields["next"])
+                pointer(bone.fields["next"])?.takeIf { it > 0L }?.let { pending.add(it) }
+                val childBase = bone.fields["childbase"] as? Map<*, *>
+                pointer(childBase?.get("first"))?.takeIf { it > 0L }?.let { pending.add(it) }
             }
-            if (address != null && address > 0L && records.size >= MAX_BONES_PER_RIG) {
-                warnings.add("$objectName: bone count exceeded the safety limit.")
-            }
+            if (pending.isNotEmpty()) warnings.add("$objectName: bone count exceeded the safety limit.")
             if (records.isEmpty()) {
                 skipped++
                 continue

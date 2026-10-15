@@ -21,11 +21,12 @@ SomaS3D is a mobile-first Android foundation for **ShofterUI** and safe Blender 
 
 The target is Blender **3.0 through 4.x and later**, using the file's SDNA schema and conservative version-specific recognizers rather than assuming every release has the same layout. Blender 4.0+ CustomData geometry is attempted only when the schema and layer checks pass. Unknown layouts are reported as unsupported.
 
-This is not a claim of complete compatibility with every Blender version or every character feature. Real-file validation on Android is still required. The viewport previews imported shape keys at their saved current values, but interactive ShofterUI morph sliders and rig controls are not yet complete.
+This is not a claim of complete compatibility with every Blender version or every character feature. Real-file validation on Android is still required. The viewport previews imported shape keys at their saved current values. The Android inspector now also has initial interactive 0–1 shape-key sliders and per-object visibility toggles (usable for outfit meshes). Rig controls are still not complete.
 
 ## Current limits
 
-- Shape keys are previewed at saved current values; live morph sliders, key editing, and Blender driver/dependency-graph behavior are not implemented yet.
+- Shape-key sliders currently use a 0–1 range; per-key Blender slider limits, key editing, and Blender driver/dependency-graph behavior are not implemented yet.
+- Object visibility toggles affect imported mesh objects; they do not yet control Blender collections, hide rules, or outfit dependencies.
 - Armature import currently preserves basic bone hierarchy/geometry metadata; full pose evaluation, vertex weights/skinning, constraints, actions, and driver behavior are not implemented as a full Blender rig runtime.
 - UV layers, materials, texture packing, and complex node graphs need additional version-aware extraction and fidelity tests.
 - A malformed or unsupported structure may be skipped with warnings rather than imported.

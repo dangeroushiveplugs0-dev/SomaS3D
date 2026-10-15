@@ -206,7 +206,7 @@ class MainActivity : Activity() {
                     val meshRecords = decoded.blocks
                         .filter { it.success && it.typeName == "Mesh" }
                         .flatMap { it.records }
-                    val shapeKeys = BlendShapeKeyImporter.import(meshRecords, decoder, result.littleEndian)
+                    val shapeKeys = BlendShapeKeyImporter.readShapeKeys(meshRecords, decoder, result.littleEndian)
                     val meshLinks = BlendMeshDatablockLinker.link(meshRecords, decoder)
                     val legacyNormalized = BlendMeshExtractor.extract(meshLinks.inputs)
                     val meshLayout = BlendMeshLayoutInspector.inspect(result.schema)

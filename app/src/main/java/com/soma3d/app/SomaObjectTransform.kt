@@ -31,15 +31,23 @@ object SomaObjectTransform {
             kotlin.math.abs(m[11]) > 1e-6 || kotlin.math.abs(m[15] - 1.0) > 1e-6) {
             return Result(null, false, "Object matrix is not a supported affine transform.")
         }
-        val transformed = mesh.vertices.map { point ->
-            val x = m[0] * point.x + m[4] * point.y + m[8] * point.z + m[12]
-            val y = m[1] * point.x + m[5] * point.y + m[9] * point.z + m[13]
-            val z = m[2] * point.x + m[6] * point.y + m[10] * point.z + m[14]
-            SomaVector3(x, y, z)
+        fun transformPoint(point: SomaVector3): SomaVector3 = SomaVector3(
+            m[0] * point.x + m[4] * point.y + m[8] * point.z + m[12],
+            m[1] * point.x + m[5] * point.y + m[9] * point.z + m[13],
+            m[2] * point.x + m[6] * point.y + m[10] * point.z + m[14]
+        )
+        val transformed = mesh.vertices.map(::transformPoint)
+        val transformedShapeKeys = mesh.shapeKeys.map { key ->
+            key.copy(coordinates = key.coordinates.map(::transformPoint))
         }
-        if (transformed.any { !it.x.isFinite() || !it.y.isFinite() || !it.z.isFinite() }) {
-            return Result(null, false, "Object transform produced non-finite coordinates.")
+        val allCoordinates = transformed + transformedShapeKeys.flatMap { it.coordinates }
+        if (allCoordinates.any { !it.x.isFinite() || !it.y.isFinite() || !it.z.isFinite() }) {
+            return Result(null, false, "Object transform produced non-finite mesh or shape-key coordinates.")
         }
-        return Result(mesh.copy(vertices = transformed), true, "Object transform applied.")
+        return Result(
+            mesh.copy(vertices = transformed, shapeKeys = transformedShapeKeys),
+            true,
+            "Object transform applied to mesh and shape keys."
+        )
     }
 }

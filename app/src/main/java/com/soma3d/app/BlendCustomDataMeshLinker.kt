@@ -29,10 +29,10 @@ object BlendCustomDataMeshLinker {
         littleEndian: Boolean,
         blenderVersion: String?
     ): Result {
-        if (blenderVersion?.take(3)?.toIntOrNull() != 400) {
+        if ((blenderVersion?.toIntOrNull() ?: 0) < 400) {
             return Result(
                 emptyList(), emptyList(),
-                listOf("CustomData geometry extraction is currently restricted to Blender 4.0 file versions."),
+                listOf("CustomData geometry extraction requires Blender 4.0 or newer; schema and layer validation still apply."),
                 0,
                 "CustomData geometry path not attempted for Blender version ${blenderVersion ?: "unknown"}."
             )
